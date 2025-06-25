@@ -1,0 +1,58 @@
+/* client/src/pages/ClientDetailScreen.css */
+.client-detail-container {
+    padding-bottom: 70px; /* Space for bottom nav */
+    min-height: 100vh;
+    background-color: var(--color-background-app);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Reusing header styles from BookingDetailScreen for consistency */
+.detail-header {
+    background-color: var(--color-background-card);
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    box-shadow: var(--box-shadow-sm);
+    margin-bottom: var(--spacing-md);
+    position: relative;
+}
+
+.back-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--color-primary);
+    cursor: pointer;
+    padding: 0;
+    margin-right: var(--spacing-md);
+}
+
+.detail-heading {
+    font-size: var(--font-size-h2);
+    color: var(--color-primary);
+    margin: 0 auto; /* Center the heading */
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+.detail-content {
+    flex-grow: 1;
+    padding: var(--spacing-md);
+}
+
+.client-form {
+    background-color: var(--color-background-card);
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--box-shadow-md);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.save-button {
+    margin-top: var(--spacing-lg);
+    width: 100%;
+}

@@ -1,0 +1,65 @@
+
+.login-screen-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-image:
+    linear-gradient(var(--color-primary-light),var(--color-primary-light)),
+    url("/public/bg.jpg");
+    background-color: var(--color-primary-light);
+    background-repeat: no-repeat; /* Prevents repeating */
+    background-position: top; /* Centers the image */
+    background-size: cover; /* Covers the entire element */
+    background-blend-mode: normal;
+    
+    padding: var(--spacing-md);
+}
+
+.login-form-container {
+    background-color: var(--color-primary);
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--box-shadow-md);
+    width: 100%;
+    max-width: 400px; /* Adjust max-width as per design */
+    text-align: center;
+}
+.login-form-container input {
+    text-decoration: none;
+    height: 45px;
+    border-radius: 15px;
+    background: rgba(248,243,242,0.91);
+    background-blend-mode: normal;
+    box-shadow: inset -41px 2px 36px -28px #1a2954,
+                inset 41px 2px 36px -28px #1a2954;
+    }
+.login-form-container label{
+    color:azure;
+}
+.login-form-container button {
+    background-color: var(--color-darkprimary);
+    color: var(--color-primary);
+    border: none;
+    border-radius: 15px;
+ 
+  background-blend-mode: normal;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+   
+}
+.login-form-container button:hover {
+    background-color: var(--color-darkprimary-hover);
+    color: var(--color-text-light);
+}
+.login-form-container h2 {
+    margin-bottom: var(--spacing-lg);
+    color: var(--color-primary);
+    font-size: var(--font-size-h2);
+}
+
+.login-link {
+    margin-top: var(--spacing-md);
+    font-size: var(--font-size-small);
+    color: var(--color-text-medium);
+}
