@@ -55,7 +55,10 @@ const loginUser = asyncHandler(async (req, res) => {
             email: user.email,
             role: user.role,
             token: user.generateAuthToken(), // Generate JWT
+        
+            
         });
+       
     } else {
         res.status(401); // Unauthorized
         throw new Error('Invalid email or password');

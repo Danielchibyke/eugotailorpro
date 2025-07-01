@@ -54,7 +54,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 // The token contains the user's ID and is signed with a secret key.
 userSchema.methods.generateAuthToken = function () {
     return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-        expiresIn: '1h', // Token expires in 1 hour
+        expiresIn: '24h', // Token expires in 24 hour
     });
 };
 

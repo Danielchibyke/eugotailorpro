@@ -5,22 +5,36 @@ import BottomNavbar from '../components/BottomNavbar';
 import '../App.css'; // For general app structure
 import './styles/ClientListScreen.css'; // Specific styles for this screen
 import { FiPlus, FiEdit } from 'react-icons/fi'; // Icons for Add and Edit
+import api from '../utils/api'; 
 
 const ClientListScreen = () => {
     const navigate = useNavigate();
     // Placeholder client data
-    const [clients, setClients] = useState([
-        { _id: 'client1', name: 'Alice Johnson', phone: '123-456-7890', email: 'alice@example.com' },
-        { _id: 'client2', name: 'Bob Williams', phone: '098-765-4321', email: 'bob@example.com' },
-        { _id: 'client3', name: 'Charlie Brown', phone: '555-123-4567', email: 'charlie@example.com' },
-        { _id: 'client4', name: 'Diana Prince', phone: '111-222-3333', email: 'diana@example.com' },
-    ]);
+    const [clients, setClients] = useState([ ]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     useEffect(() => {
         // In a real application, you would fetch clients from your backend here
         // For now, we use the static placeholder data
+        fetchClients();
     }, []);
+
+    const fetchClients = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const { data } = await api.get('/clients');
+            setClients(data);
+        } catch (err) {
+            setError(err.response?.data?.msg || 'Failed to fetch clients.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredClients = clients.filter(client =>
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

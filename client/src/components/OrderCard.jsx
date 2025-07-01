@@ -26,6 +26,20 @@ const OrderCard = ({ order, onEdit, onDelete, onComplete }) => {
 
     return (
         <div className="order-card">
+            {/* here the new order card */}
+            <div className='order-card-wrapper'>
+                <div className='order-card-header-wrapper'>
+                    <div className='order-card-header-left'>
+
+                    </div>
+                    <div className='order-card-header-right'>
+                        <span className='order-card-id'>Order ID: {order._id}</span>
+                    </div>
+                </div>
+            </div>
+
+
+
             <div className="order-card-header">
                 <h3 className="order-client-name">{order.client?.name || 'N/A'}</h3>
                 <span className={`order-status ${getStatusClass(order.status)}`}>
@@ -38,15 +52,15 @@ const OrderCard = ({ order, onEdit, onDelete, onComplete }) => {
                         <span className="detail-label">Service:</span> {order.serviceType}
                     </p>
                     <p className="order-detail-item">
-                        <span className="detail-label">Date:</span> {formattedDate}
+                        <span className="detail-label">Date:</span> {order.bookingDate ? formattedDate : 'N/A'}
                     </p>
                     <p className="order-detail-item">
-                        <span className="detail-label">Time:</span> {order.bookingTime}
+                        <span className="detail-label">Time:</span> {order.bookingTime || 'N/A'}
                     </p>
                 </div>
                 {order.designImageURL && (
                     <div className="order-design-thumbnail">
-                        <img src={order.designImageURL} alt="Design" />
+                        <img src={order.design} alt="Design" />
                     </div>
                 )}
             </div>
@@ -55,7 +69,7 @@ const OrderCard = ({ order, onEdit, onDelete, onComplete }) => {
                     <FiEdit />
                     <span>Edit</span>
                 </button>
-                {order.status === 'pending' && (
+                {order.status === 'Pending' && (
                     <button className="btn-icon" onClick={() => onComplete(order._id)}>
                         <FiCheckCircle />
                         <span>Complete</span>

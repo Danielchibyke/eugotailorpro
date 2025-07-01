@@ -31,10 +31,10 @@ const clientSchema = mongoose.Schema(
         },
         measurement: { 
             type: Object,
-            default: {},
+           
             chest: {
                 type: Array,
-                default: [0, 0], // Default to an array of three zeros
+                default: [0,0], // Default to an array of three zeros
                 MimeTypeArray: true, 
             },
             waist: {
@@ -43,7 +43,7 @@ const clientSchema = mongoose.Schema(
             },
             roundsleeve: {
                 type: Array,
-                default: [0, 0, 0], // Default to an array of three zeros
+                default: [0,0,0], // Default to null if no data is provided
                 MimeTypeArray: true, // Ensures it's an array of numbers
             },
             shoulder: {
@@ -76,7 +76,7 @@ const clientSchema = mongoose.Schema(
             },
             sleeveLength: {
                 type: Array,
-                default: [0, 0, 0], // Default to an array of three zeros
+                default: [0,0,0], // Default to an array of three zeros
                 MimeTypeArray: true, 
             },
        

@@ -6,6 +6,7 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    margin-top: 140px;
 }
 
 .dashboard-header {
@@ -35,6 +36,8 @@
 }
 
 .dashboard-content {
+    display: flex;
+
     flex-grow: 1;
     padding: var(--spacing-md);
 }
@@ -61,7 +64,7 @@
 
 .dashboard-card h3 {
     font-size: var(--font-size-h3);
-    color: var(--color-primary);
+    color: var(--color-accent);
     margin-bottom: var(--spacing-md);
 }
 
@@ -108,17 +111,29 @@
 /* New styles for dashboard sections */
 .dashboard-section {
     margin-bottom: var(--spacing-xl);
+    display: flex;
+    align-self: start;
+    flex-direction: column;
+    justify-content: center;
+    background-color: blueviolet;
+
 }
 
 .section-title {
     font-size: var(--font-size-h2);
-    color: var(--color-primary);
+    color: var(--color-accent);
     margin-bottom: var(--spacing-lg);
 }
 
 .orders-list {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-grow: calc(100% - 200px); /* Adjust to fill available space */
+    flex-wrap: wrap;
+    justify-content: space-around;
+    align-items: stretch;
+    padding: var(--spacing-md);
+
     gap: var(--spacing-md);
 }
 

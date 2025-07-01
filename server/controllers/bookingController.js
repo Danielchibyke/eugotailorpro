@@ -7,10 +7,10 @@ import Client from '../models/Client.js'; // Needed to validate client existence
 // @route   POST /api/bookings
 // @access  Private (Admin/Staff)
 const createBooking = asyncHandler(async (req, res) => {
-    const { client, serviceType, bookingDate, bookingTime, status, notes } = req.body;
+    const { client, bookingDate, status, notes, design } = req.body;
 
     // Basic validation
-    if (!client || !serviceType || !bookingDate || !bookingTime) {
+    if (!client || !bookingDate ) {
         res.status(400);
         throw new Error('Please provide client, service type, date, and time for the booking.');
     }
@@ -24,12 +24,11 @@ const createBooking = asyncHandler(async (req, res) => {
 
     const booking = await Booking.create({
         client,
-        serviceType,
         bookingDate,
-        bookingTime,
         status,
         notes,
         bookedBy: req.user._id, // User who created the booking
+        design
     });
 
     res.status(201).json(booking);
@@ -39,7 +38,7 @@ const createBooking = asyncHandler(async (req, res) => {
 // @route   GET /api/bookings
 // @access  Private (Admin/Staff)
 const getBookings = asyncHandler(async (req, res) => {
-    // Optionally filter bookings, e.g., by date range, status, or client
+   
     const bookings = await Booking.find({})
         .populate('client', 'name email phone') // Populate client info
         .populate('bookedBy', 'name email'); // Populate booker info
@@ -66,17 +65,16 @@ const getBookingById = asyncHandler(async (req, res) => {
 // @route   PUT /api/bookings/:id
 // @access  Private (Admin/Staff)
 const updateBooking = asyncHandler(async (req, res) => {
-    const { client, serviceType, bookingDate, bookingTime, status, notes } = req.body;
+    const { client, bookingDate, status, notes,  design } = req.body;
 
     const booking = await Booking.findById(req.params.id);
 
     if (booking) {
         booking.client = client || booking.client;
-        booking.serviceType = serviceType || booking.serviceType;
         booking.bookingDate = bookingDate || booking.bookingDate;
-        booking.bookingTime = bookingTime || booking.bookingTime;
         booking.status = status || booking.status;
         booking.notes = notes || booking.notes;
+        design && (booking.design = design); // Update design if provided
 
         const updatedBooking = await booking.save();
         res.json(updatedBooking);

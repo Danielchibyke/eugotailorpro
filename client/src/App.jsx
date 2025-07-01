@@ -7,10 +7,11 @@ import RegisterScreen from './pages/RegisterScreen';
 import DashboardScreen from './pages/DashboardScreen';
 import HomeScreen from './pages/HomeScreen';
 import BookingDetailScreen from './pages/BookingDetailScreen';
-import ClientListScreen from './pages/ClientListScreen';
-import ClientDetailScreen from './pages/ClientDetailScreen';
-import FinancialsScreen from './pages/FinancialsScreen'; // Import FinancialsScreen
+
+import FinancialsScreen from './pages/FinancialsScreen'; 
 import ProtectedRoute from './components/ProtectedRoute';
+import ClientManagementScreen from './pages/ClientManagementScreen';
+import BookingScreen from './pages/BookingScreen';
 
 function App() {
     return (
@@ -43,11 +44,13 @@ function AppContent() {
                 <Route element={<ProtectedRoute allowedRoles={['admin', 'staff']} />}>
                     <Route path="/dashboard" element={<DashboardScreen />} />
                     <Route path="/bookings/:id/edit" element={<BookingDetailScreen />} />
+                    <Route path="/bookings/:id" element={<BookingDetailScreen />} />
+                    <Route path="/bookings" element={<BookingScreen />} />
 
                     {/* Client Management Routes */}
-                    <Route path="/clients" element={<ClientListScreen />} />
-                    <Route path="/clients/add" element={<ClientDetailScreen />} />
-                    <Route path="/clients/:id/edit" element={<ClientDetailScreen />} />
+                    <Route path="/clients" element={<ClientManagementScreen />} />
+                    <Route path="/clients/add" element={<ClientManagementScreen />} />
+                    {/* <Route path="/clients/:id/edit" element={<ClientDetailScreen />} /> */}
 
                     {/* Financials Route */}
                     <Route path="/financials" element={<FinancialsScreen />} />

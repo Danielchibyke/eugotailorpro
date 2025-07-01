@@ -1,14 +1,20 @@
 // client/src/pages/DashboardScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import BottomNavbar from '../components/BottomNavbar';
+import TopNavbar from '../components/TopNavbar';
 import OrderCard from '../components/OrderCard'; // Import OrderCard
 import '../App.css';
 import './styles/DashboardScreen.css';
+import api from '../utils/api';
+
+
 
 const DashboardScreen = () => {
     const { user, logout } = useAuth();
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     // Placeholder orders for demonstration (will fetch from backend later)
@@ -41,12 +47,35 @@ const DashboardScreen = () => {
             designImageURL: '/sample-design-3.jpg', // Placeholder image
         },
     ]);
+    useEffect(() => {
+        // Fetch orders from API (mocked for now)
+        // In a real application, you would replace this with an API call
+        const fetchOrders = async () => {
+            try {
+                const { data } = await api.get("/bookings");
+                if (data) {
+                  setOrders(data);
+                } else {
+                  setOrders(testData);
+                }
+              } catch (err) {
+                setError(err.message || "An error occurred while fetching bookings");
+                console.error("Error fetching bookings:", err);
+              } finally {
+                setLoading(false);
+              }
+            
+        };
+
+        fetchOrders();
+    }, []);
+    console.log("Orders fetched:", orders);
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
-
+    
     const handleEditOrder = (orderId) => {
         console.log(`Edit order: ${orderId}`);
         navigate(`/bookings/${orderId}/edit`); // Navigate to a booking detail/edit page
@@ -70,12 +99,14 @@ const DashboardScreen = () => {
         return null; // Redirect handled by ProtectedRoute
     }
 
-    const pendingOrders = orders.filter(order => order.status === 'pending');
-    const completedOrders = orders.filter(order => order.status === 'completed');
+    const pendingOrders = orders.filter(order => order.status === 'Pending');
+    const completedOrders = orders.filter(order => order.status === 'Completed');
 
 
     return (
-        <div className="dashboard-container">
+        <div className='background'>        
+            <TopNavbar />
+        <div className="dashboard-container ">
             <header className="dashboard-header">
                 <div className="dashboard-header-left">
                     <img src="/logo-placeholder.png" alt="Logo" className="dashboard-logo" />
@@ -140,6 +171,7 @@ const DashboardScreen = () => {
 
             </main>
 
+        </div>
             <BottomNavbar />
         </div>
     );

@@ -6,7 +6,7 @@ import Client from '../models/Client.js';
 // @route   POST /api/clients
 // @access  Private (Admin/Staff)
 const createClient = asyncHandler(async (req, res) => {
-    const { name, email, phone, address, notes } = req.body;
+    const { name, email, phone, address,measurement } = req.body;
 
     // Basic validation
     if (!name || !phone) {
@@ -33,7 +33,7 @@ const createClient = asyncHandler(async (req, res) => {
         email,
         phone,
         address,
-        notes,
+        measurement,
         createdBy: req.user._id, // User who created the client from middleware
     });
 
@@ -67,7 +67,7 @@ const getClientById = asyncHandler(async (req, res) => {
 // @route   PUT /api/clients/:id
 // @access  Private (Admin/Staff)
 const updateClient = asyncHandler(async (req, res) => {
-    const { name, email, phone, address, notes } = req.body;
+    const { name, email, phone, address, measurement} = req.body;
 
     const client = await Client.findById(req.params.id);
 
@@ -75,8 +75,8 @@ const updateClient = asyncHandler(async (req, res) => {
         client.name = name || client.name;
         client.email = email || client.email;
         client.phone = phone || client.phone;
-        client.address = address || client.address;
-        client.notes = notes || client.notes;
+        client.address = address || client.address;        
+        client.measurement = measurement || client.measurement;
 
         // Optionally, check for duplicate email/phone if they are being updated to existing ones
         if (email && email !== client.email) {
@@ -95,6 +95,7 @@ const updateClient = asyncHandler(async (req, res) => {
         }
 
         const updatedClient = await client.save();
+        
         res.json(updatedClient);
     } else {
         res.status(404);

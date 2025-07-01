@@ -1,0 +1,281 @@
+
+.client-management-container {
+    padding-bottom: 20px; /* Space for bottom navbar */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+   
+ 
+
+}
+.search-bar-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.search-input {
+    width: 100%;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-body);
+    box-sizing: border-box; /* Include padding in width */
+}
+
+
+.client-management-container .detail-header {
+    position: fixed;
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: var(--color-primary); /* Assuming you have primary-color in App.css */
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.client-management-container .detail-header h1 {
+    width: auto;
+    margin: 0;
+    color: var(--color-background-app);
+    font-size: 1.5em;
+}
+
+.client-management-container .detail-header .back-button {
+    background: var(--color-darkprimary);
+    border: none;
+    width: auto;
+    border-radius: 5px;
+    color: var(--color-primary);
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.client-management-container .detail-header .add-button {
+    background-color: var(--color-accent); /* Use accent color for add button */
+    color: white;
+    width: auto;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.client-management-content {
+    margin-top: 60px; 
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 50px;
+}
+
+.client-list {
+    margin-top: 20px;
+    display: grid;
+    gap: 15px;
+}
+
+.client-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 15px;
+    display: flex;
+    flex-direction: column; 
+    gap: 10px;
+}
+
+.client-card h3 {
+    margin: 0 0 10px 0;
+    color: var(--primary-color);
+    font-size: 1.2em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.client-card p {
+    margin: 3px 0;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.client-card p strong {
+    color: var(--dark-text-color);
+}
+
+.client-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.client-actions .edit-client-btn {
+    background-color: var(--color-darkprimary); 
+    color: var(--color-primary);
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.client-actions .delete-client-btn {
+    background-color: var(--color-error); 
+    color: white;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.client-actions .edit-client-btn:hover,
+.client-actions .delete-client-btn:hover {
+    opacity: 0.9;
+}
+
+.no-clients-message {
+    text-align: center;
+    color: #777;
+    margin-top: 30px;
+    font-size: 1.1em;
+}
+
+
+.client-form-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; 
+    overflow: hidden;
+}
+
+.client-form-popup {
+    background-color: #cadcdc;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh; 
+    animation: fadeInScale 0.3s ease-out; 
+    box-sizing: border-box; 
+    position: relative;
+    display: flex;
+    flex-direction: column; 
+    gap: 15px;
+    color: var(--dark-text-color);
+    font-family: var(--font-family); 
+    font-size: 1em; 
+    animation-name: fadeInScale; 
+    animation-duration: 0.3s; 
+    animation-fill-mode: both; 
+    animation-timing-function: ease-out; 
+    margin-bottom: 80px;
+    overflow: hidden; 
+}
+
+
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+}
+
+.client-form-popup .form-heading {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    width: 100%;
+    height: 80px;
+    overflow: hidden;
+}
+
+.client-form-popup .form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column; 
+    width: 100%; 
+
+}
+
+.client-form-popup label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+.client-form-popup .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box; 
+}
+
+.client-form-popup .form-actions {
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    margin-top: 25px;
+    width: 100%;
+    gap: 10px; 
+    align-items: center; 
+    background-color: aqua;
+}
+
+.client-form-popup form .save-button {
+    background-color: var(--color-success); 
+    color: var(--color-primary);
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    flex-grow: 1;
+    height: fit-content;
+    width: 40vw;
+    
+}
+
+.client-form-popup .cancel-button {
+    background-color: #6c757d;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    flex-grow: 1;
+    height: fit-content;
+    width: 40vw;
+}
+
+.client-form-popup .save-button:hover,
+.client-form-popup .cancel-button:hover {
+    opacity: 0.9;
+}

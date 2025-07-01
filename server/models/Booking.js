@@ -8,16 +8,9 @@ const bookingSchema = mongoose.Schema(
             required: true,
             ref: 'Client',
         },
-        serviceType: { // e.g., 'Consultation', 'Custom Design', 'Fitting', 'Alteration'
-            type: String,
-            required: true,
-        },
+       
         bookingDate: {
             type: Date,
-            required: true,
-        },
-        bookingTime: { // Store time as a string for simplicity, or use a more complex time type
-            type: String,
             required: true,
         },
         status: { // e.g., 'Pending', 'Confirmed', 'Completed', 'Cancelled'
@@ -34,6 +27,11 @@ const bookingSchema = mongoose.Schema(
             required: true,
             ref: 'User',
         },
+        
+        design: {
+            type: String, //url for the design image
+            required: false,
+        }
     },
     {
         timestamps: true,
