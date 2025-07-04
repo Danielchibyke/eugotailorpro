@@ -1,72 +1,105 @@
 // client/src/App.js
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import LoginScreen from './pages/LoginScreen';
-import RegisterScreen from './pages/RegisterScreen';
-import DashboardScreen from './pages/DashboardScreen';
-import HomeScreen from './pages/HomeScreen';
-import BookingDetailScreen from './pages/BookingDetailScreen';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  BrowserRouter,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import LoginScreen from "./pages/LoginScreen";
+import RegisterScreen from "./pages/RegisterScreen";
+import DashboardScreen from "./pages/DashboardScreen";
+import HomeScreen from "./pages/HomeScreen";
+import BookingDetailScreen from "./pages/BookingDetailScreen";
 
-import FinancialsScreen from './pages/FinancialsScreen'; 
-import ProtectedRoute from './components/ProtectedRoute';
-import ClientManagementScreen from './pages/ClientManagementScreen';
-import BookingScreen from './pages/BookingScreen';
+import { BookingProvider } from "./context/BookingContext";
+import FinancialsScreen from "./pages/FinancialsScreen";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ClientManagementScreen from "./pages/ClientManagementScreen";
+import BookingScreen from "./pages/BookingScreen";
+import "./App.css"; // Import global styles
+import "./pages/styles/DashboardScreen.css"; // Import styles for DashboardScreen
+import ErrorBoundary from "./utils/ErrorBoundray";
 
-function App() {
-    return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
-    );
+function App({}) {
+  return (
+   
+    <AuthProvider>
+        <BookingProvider>
+      <AppContent />
+       </BookingProvider>
+    </AuthProvider>
+   
+    
+  );
 }
 
+import TopNavbar from "./components/TopNavbar";
+import BottomNavbar from "./components/BottomNavbar";
+
 function AppContent() {
-    const { user, loading } = useAuth();
+  const { user, loading } = useAuth();
+  
 
-    if (loading) {
-        return (
-            <div className="loading-spinner">
-                Loading Application...
-            </div>
-        );
-    }
+  if (loading) {
+    return <div className="loading-spinner">Loading Application...</div>;
+  }
 
-    return (
-        <Router>
-            <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<HomeScreen />} />
-                <Route path="/login" element={<LoginScreen />} />
-                <Route path="/register" element={<RegisterScreen />} />
+  return (
+    <Router>
+      <TopNavbar />
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<HomeScreen />} />
+        <Route path="/login" element={<LoginScreen />} />
+        <Route path="/register" element={<RegisterScreen />} />
 
-                {/* Protected Routes */}
-                <Route element={<ProtectedRoute allowedRoles={['admin', 'staff']} />}>
-                    <Route path="/dashboard" element={<DashboardScreen />} />
-                    <Route path="/bookings/:id/edit" element={<BookingDetailScreen />} />
-                    <Route path="/bookings/:id" element={<BookingDetailScreen />} />
-                    <Route path="/bookings" element={<BookingScreen />} />
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute allowedRoles={["admin", "staff"]} />}>
+          <Route path="/dashboard" element={<DashboardScreen />} />
+          <Route path="/bookings/:id/edit" element={
+          <ErrorBoundary>
+          <BookingScreen  />
+            </ErrorBoundary>
+        } />
+          <Route path="/bookings/:id" element={<BookingDetailScreen />} />
+            
+          <Route path="/bookings" element={
+            <ErrorBoundary>
+                <BookingScreen/>
+            </ErrorBoundary>
+          
+          } />
 
-                    {/* Client Management Routes */}
-                    <Route path="/clients" element={<ClientManagementScreen />} />
-                    <Route path="/clients/add" element={<ClientManagementScreen />} />
-                    {/* <Route path="/clients/:id/edit" element={<ClientDetailScreen />} /> */}
+          {/* Client Management Routes */}
+          <Route path="/clients" element={<ClientManagementScreen />} />
+          <Route path="/clients/add" element={<ClientManagementScreen />} />
+          {/* <Route path="/clients/:id/edit" element={<ClientDetailScreen />} /> */}
 
-                    {/* Financials Route */}
-                    <Route path="/financials" element={<FinancialsScreen />} />
+          {/* Financials Route */}
+          <Route path="/financials" element={<FinancialsScreen />} />
 
-                    {/* Add other protected routes here (e.g., Profile) */}
-                    {/* <Route path="/profile" element={<ProfileScreen />} /> */}
-                </Route>
+          {/* Add other protected routes here (e.g., Profile) */}
+          {/* <Route path="/profile" element={<ProfileScreen />} /> */}
+        </Route>
 
-                {/* Fallback/Default redirect if no route matches */}
-                <Route
-                    path="*"
-                    element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />}
-                />
-            </Routes>
-        </Router>
-    );
+        {/* Fallback/Default redirect if no route matches */}
+        <Route
+          path="*"
+          element={
+            user ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+      </Routes>
+      <BottomNavbar />
+    </Router>
+  );
 }
 
 export default App;

@@ -67,7 +67,7 @@ const getClientById = asyncHandler(async (req, res) => {
 // @route   PUT /api/clients/:id
 // @access  Private (Admin/Staff)
 const updateClient = asyncHandler(async (req, res) => {
-    const { name, email, phone, address, measurement} = req.body;
+    const { name, email, phone, address, measurement } = req.body;
 
     const client = await Client.findById(req.params.id);
 
@@ -75,8 +75,12 @@ const updateClient = asyncHandler(async (req, res) => {
         client.name = name || client.name;
         client.email = email || client.email;
         client.phone = phone || client.phone;
-        client.address = address || client.address;        
-        client.measurement = measurement || client.measurement;
+        client.address = address || client.address;
+
+        // If measurement data is provided, merge it with the existing data
+        if (measurement) {
+            Object.assign(client.measurement, measurement);
+        }
 
         // Optionally, check for duplicate email/phone if they are being updated to existing ones
         if (email && email !== client.email) {

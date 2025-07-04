@@ -6,37 +6,67 @@
     background-color: #f0f0f0;
     width: 100%;
     color: var(--color-background-app);
-    height: 200vh;
+    
+    margin-top: 70px;
+    margin-bottom: 70px;
+    font-family: var(--font-family);
 }
-.booking-header {
+ .booking-screen .booking-header {
+   position: fixed;
     display: flex;
+    width: 100%;
     justify-content: space-between;
     align-items: center;
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    width: 100%;
+    padding: 15px 20px;
+    margin-top: -20px;
+    background-color: var(--color-primary); /* Assuming you have primary-color in App.css */
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+   
     color: var(--color-background-app);
+    
     h1{
         color: var(--color-background-app);
     }
-    button {
-        background-color: var(--color-accent);
+   
+    .back-button {
+        background: var(--color-darkprimary);
+        border: none;
+        width: auto;
+        border-radius: 5px;
+        color: var(--color-primary);
+        font-size: 1.5em;
+        cursor: pointer;
+        padding: 5px;
+    
+    }
+    .create-booking-button {
+        background-color: var(--color-accent); /* Use accent color for add button */
         color: white;
-        padding: 10px 15px;
+        width: auto;
+        padding: 8px 15px;
         border: none;
         border-radius: 5px;
         cursor: pointer;
-        font-size: 16px;
+        font-weight: bold;
     }
 }
+
+@media screen and (max-width: 768px) {
+    .booking-header  h1{
+        font-size: 1.2em;
+        margin-left: 10px;
+    }
+    
+}
+
 .booking-form {
     background-color: #fff;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     width: 100%;
-    max-width: 600px;
+    max-width: 40%;
 }
 .booking-form label {
     display: block;
@@ -100,9 +130,9 @@
     padding: 25px;
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    width: 90%;
+    width: 70%;
     max-width: 500px;
-    max-height: fit-content; 
+    max-height: 70%; 
     animation: fadeInScale 0.3s ease-out; 
     box-sizing: border-box; 
     position: relative;
@@ -118,6 +148,15 @@
     animation-timing-function: ease-out; 
     margin-bottom: 80px;
     overflow: auto;
+}
+.bookings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    max-width: 800px;
+    margin-top: 140px;
+    
 }
 
 @keyframes fadeInScale {

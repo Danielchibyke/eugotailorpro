@@ -194,7 +194,7 @@ h3 {
     linear-gradient(var(--color-primary-light),var(--color-primary-light)),
     url("/public/bg.jpg");
     background-color: var(--color-primary-light);
-    background-repeat: no-repeat; /* Prevents repeating */
+    background-repeat: repeat-y; /* Prevents repeating */
     background-position: top; /* Centers the image */
     background-size: cover; /* Covers the entire element */
     background-blend-mode: normal;

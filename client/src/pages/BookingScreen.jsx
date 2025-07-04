@@ -2,17 +2,21 @@ import React from "react";
 import { useState, useEffect, useMemo } from "react";
 import "../App.css";
 import "./styles/BookingScreen.css";
-import { useNavigate } from "react-router-dom";
+import BookingCard from "../components/BookingCard";
+
 import { useAuth } from "../context/AuthContext";
 import BottomNavbar from "../components/BottomNavbar";
 import api from "../utils/api";
+import { useBookings } from "../context/BookingContext";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function BookingScreen() {
+    // Use the BookingContext to manage bookings
+    const { bookings, setBookings, loading, setLoading, error, setError } = useBookings();  
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { id } = useParams(); // Get booking ID from URL
+ 
   const [showCreateBooking, setShowCreateBooking] = useState(false);
   const [showBookingDetails, setShowBookingDetails] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -21,10 +25,13 @@ export default function BookingScreen() {
   const [formData, setFormData] = useState({
     client: "",
     bookingDate: "",
+    deliveryDate: "", // New field
     status: "Pending",
     notes: "",
     bookedBy: user ? user._id : "", // Replace with actual user ID if available
     design: "", // URL for the design image
+    price: "",
+    payment: "",
   });
   const [currentBooking, setCurrentBooking] = useState(null);
 
@@ -75,6 +82,8 @@ export default function BookingScreen() {
     }
   };
 
+  
+
   // Fetch clients from the API
   useEffect(() => {
     const fetchClients = async () => {
@@ -90,43 +99,42 @@ export default function BookingScreen() {
         console.error("Error fetching clients:", err);
       }
     };
-    fetchClients();
-  }, []);
 
-  // Sample test data
-  const testData = {
-    client: "John Doe",
-    bookingDate: "2023-10-01",
-    status: "Pending",
-    notes: "Initial consultation",
-    bookedBy: user ? user._id : "testUserId", // Replace with actual user ID if available
-    design: "https://example.com/design.jpg", // Replace with actual design URL if available
-  };
-
-  useEffect(() => {
-    // Fetch bookings from the API
-    // If the API call fails, use the test data
-    const fetchBookings = async () => {
-      setLoading(true);
-      setError(null);
-
+    const fetchBookingById = async (bookingId) => {
       try {
-        const { data } = await api.get("/bookings");
+        const { data } = await api.get(`/bookings/${bookingId}`);
         if (data) {
-          setBookings(data);
+          handleEditBooking(data);
         } else {
-          setBookings(testData);
+          setError("Booking not found");
         }
       } catch (err) {
-        setError(err.message || "An error occurred while fetching bookings");
-        console.error("Error fetching bookings:", err);
-      } finally {
-        setLoading(false);
+        setError(err.message || "An error occurred while fetching the booking");
       }
     };
 
-    fetchBookings();
-  }, []);
+    fetchClients();
+    if (id) {
+      fetchBookingById(id);
+    } else {
+      fetchBookings(); // Fetch all bookings if no ID is present
+    }
+  }, [id]);
+
+  // Sample test data
+  const testData = [
+    {
+      _id: '1',
+      client: { name: 'John Doe' },
+      bookingDate: '2023-10-01',
+      status: 'Pending',
+      notes: 'Initial consultation',
+      bookedBy: { name: 'Test User' },
+      design: 'https://example.com/design.jpg',
+    },
+  ];
+
+  
 
   // Fetch bookings from the API
   // If the API call fails, use the test data
@@ -172,12 +180,26 @@ export default function BookingScreen() {
     setFormData({
       client: booking.client ? booking.client._id : "", // Ensure client ID is set
       bookingDate: new Date(booking.bookingDate).toISOString().split("T")[0], // Format date to YYYY-MM-DD
+      deliveryDate: booking.deliveryDate ? new Date(booking.deliveryDate).toISOString().split("T")[0] : "", // Format date to YYYY-MM-DD
       status: booking.status,
       notes: booking.notes,
       bookedBy: booking.bookedBy ? booking.bookedBy._id : user ? user._id : "",
       design: booking.design , // Ensure design is set
+      price: booking.price || "",
+      payment: booking.payment || "",
     });
     setIsFormVisible(true);
+  };
+
+  // Handle booking completion
+  const handleCompleteBooking = async (bookingId) => {
+    try {
+      const { data } = await api.put(`/bookings/${bookingId._id}`, { status: 'Completed' });
+      setBookings(bookings.map(b => (b._id === bookingId ? data : b)));
+      setSuccessMessage("Booking marked as completed!");
+    } catch (err) {
+      setError("Failed to update booking status.");
+    }
   };
 
   // Handle booking deletion
@@ -206,10 +228,13 @@ export default function BookingScreen() {
     setFormData({
       client: "", // Reset form data
       bookingDate: new Date().toISOString().split("T")[0], // Set to today's date
+      deliveryDate: "", // New field
       status: "Pending",
       notes: "",
       bookedBy: user ? user._id : "", // Replace with actual user ID if available
       design: "", // URL for the design image
+      price: "",
+      payment: "",
     });
   };
 
@@ -222,10 +247,13 @@ export default function BookingScreen() {
       const bookingData = {
         client: formData.client,
         bookingDate: formData.bookingDate,
+        deliveryDate: formData.deliveryDate, // Include deliveryDate
         status: formData.status,
         notes: formData.notes,
         bookedBy: formData.bookedBy,
         design: formData.design,
+        price: formData.price,
+        payment: formData.payment,
       };
 
       let response;
@@ -259,6 +287,7 @@ export default function BookingScreen() {
     setFormData({
       client: "",
       bookingDate: "",
+      deliveryDate: "", // New field
       status: "Pending",
       notes: "",
       bookedBy: user ? user._id : "", // Replace with actual user ID if available
@@ -268,54 +297,9 @@ export default function BookingScreen() {
     setError(null);
   };
 
-  // Render the booking screen
-  const renderBookingDetails = () => {
-    if (!selectedBooking) return null;
 
-    return (
-     
-        <div className="booking-details-overlay">
-          <div key={selectedBooking._id} className="booking-details">
-            <h2>Booking Details</h2>
-            <p>
-              <strong>Client:</strong> {selectedBooking.client.name}
-            </p>
-            <p>
-              <strong>Date:</strong>{" "}
-              {new Date(selectedBooking.bookingDate).toLocaleDateString()}
-            </p>
-            <p>
-              <strong>Status:</strong> {selectedBooking.status}
-            </p>
-            <p>
-              <strong>Notes:</strong> {selectedBooking.notes}
-            </p>
-            <p>
-              <strong>Design URL:</strong> {selectedBooking.design}
-            </p>
-            <div className="booked-by">
-                <strong>Booked By:</strong>{" "}
-                {selectedBooking.bookedBy ? (
-                  <span>{selectedBooking.bookedBy.name}</span>
-                ) : (
-                  <span>Unknown</span>
-                )}
-            </div>
-            <div className="booking-actions">
-            <button onClick={handleBookingDetailsClose} className="btn btn-accent">Close</button>
-            <button onClick={() => handleDeleteBooking(selectedBooking._id)} className="btn btn-danger">
-              Delete
-            </button>
-            <button onClick={() => handleEditBooking(selectedBooking)} className="btn btn-primary">
-                Edit
-            </button>
-            </div>
-            <BottomNavbar />
-          </div>
-        </div>
-      
-    );
-  };
+
+  
 
  
   
@@ -338,10 +322,7 @@ export default function BookingScreen() {
     );
   }
 
-  if (bookings.length > 0 && bookings[0].client === testData.client) {
-    // If bookings are empty, show test data
-    bookings.push(testData);
-  }
+  
 
   return (
     <div className="booking-screen background">
@@ -354,101 +335,192 @@ export default function BookingScreen() {
           Create Booking
         </button>
       </header>
+
       {successMessage ? (
         <p className="alert alert-success">{successMessage}</p>
       ) : (
         ""
       )}
 
-      {showBookingDetails && selectedBooking ? renderBookingDetails() : null}
+      <div className="bookings-list">
+        {bookings.length > 0 ? (
+          bookings.map((booking) => (
+            <BookingCard
+              key={booking._id}
+              booking={booking}
+              onEdit={handleEditBooking}
+              onDelete={handleDeleteBooking}
+              onComplete={handleCompleteBooking}
+            />
+          ))
+        ) : (
+          <p>No bookings available.</p>
+        )}
+      </div>
 
       {isFormVisible && (
+        <BookingForm
+          isFormVisible={isFormVisible}
+          setIsFormVisible={setIsFormVisible}
+          currentBooking={currentBooking}
+          setCurrentBooking={setCurrentBooking}
+          formData={formData}
+          setFormData={setFormData}
+          handleInputChange={handleInputChange}
+          handleFormSubmit={handleFormSubmit}
+          handleCloseForm={handleCloseForm}
+          handleClientSelectChange={handleClientSelectChange}
+          handleSearchInputChange={handleSearchInputChange}
+          searchQuery={searchQuery}
+          filteredClients={filteredClients}
+          clients={clients}
+          handleEditBooking={handleEditBooking}
+          handleDeleteBooking={handleDeleteBooking}
+          selectedBooking={selectedBooking}
+          bookings={bookings}
+        />
+      )}
+    </div>
+  );
+}
+
+export const BookingForm = ({formData, bookings, setFormData, isFormVisible, setIsFormVisible, currentBooking, setCurrentBooking,
+  handleInputChange, handleFormSubmit, handleCloseForm, handleClientSelectChange,
+handleSearchInputChange, searchQuery,  clients, handleEditBooking, handleDeleteBooking, filteredClients
+
+})=>{
+    
+  return (
+        <div className="booking-form">
+         
         <div className="booking-form-overlay">
           <div className="booking-form-popup">
             <h2>{currentBooking ? "Edit Booking" : "Create Booking"}</h2>
-            <form onSubmit={handleFormSubmit} className="booking-form">
-              <div className="form-group">
-                <label htmlFor="client">Client Name</label>
-                <select
-                  name="client"
-                  id="client"
-                  onChange={handleClientSelectChange}
-                  value={formData.client}
-                >
-                  <option value="" key={"select client"}>
-                    Select Client
-                  </option>
-                  {filteredClients.length > 0 ? (
-                    filteredClients.map((client) => (
-                      <option key={client._id + client.name} value={client._id} >
-                        {client.name}
-                      </option>
-                    ))
-                  ) : (
-                    <option value={currentBooking?.client?._id || ""} key={"No clients found"}>
-                      No clients found
+            <form onSubmit={handleFormSubmit} className="booking-form-content">
+              <div className="form-section">
+                <div className="form-group">
+                  <label htmlFor="client">Client Name</label>
+                  <select
+                    name="client"
+                    id="client"
+                    onChange={handleClientSelectChange}
+                    value={formData.client}
+                  >
+                    <option value="" key={"select client"}>
+                      Select Client
                     </option>
+                    {filteredClients.length > 0 ? (
+                      filteredClients.map((client) => (
+                        <option key={client._id + client.name} value={client._id}>
+                          {client.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={currentBooking?.client?._id || ""} key={"No clients found"}>
+                        No clients found
+                      </option>
                     )}
                     {clients.length === 0 && searchQuery.trim() === "" && (
+                      <option value="" disabled key={"No clients found"}>
+                        No clients found
+                      </option>
+                    )}
+                  </select>
+                  <input
+                    type="text"
+                    id="searchClient"
+                    name="searchClient"
+                    value={searchQuery}
+                    onChange={handleSearchInputChange}
+                    placeholder="Search Clients"
+                  />
+                </div>
+              </div>
 
-                    <option value="" disabled key={"No clients found"}>
-                      No clients found
-                    </option>
-                  )}
-                </select>
-                {/* Search input for clients */}
-                <input
-                  type="text"
-                  id="searchClient"
-                  name="searchClient"
-                  value={searchQuery}
-                  onChange={handleSearchInputChange}
-                  placeholder="Search Clients"
-                />
+              <div className="form-section">
+                <div className="form-group">
+                  <label htmlFor="bookingDate">Booking Date</label>
+                  <input
+                    type="date"
+                    id="bookingDate"
+                    name="bookingDate"
+                    value={formData.bookingDate}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="deliveryDate">Delivery Date</label>
+                  <input
+                    type="date"
+                    id="deliveryDate"
+                    name="deliveryDate"
+                    value={formData.deliveryDate}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label htmlFor="bookingDate">Booking Date</label>
-                <input
-                  type="date"
-                  id="bookingDate"
-                  name="bookingDate"
-                  value={formData.bookingDate}
-                  onChange={handleInputChange}
-                  required
-                />
+
+              <div className="form-section">
+                <div className="form-group">
+                  <label htmlFor="status">Status</label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="price">Price</label>
+                  <input
+                    type="number"
+                    id="price"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Confirmed">Confirmed</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
+
+              <div className="form-section">
+                <div className="form-group">
+                  <label htmlFor="payment">Payment</label>
+                  <input
+                    type="number"
+                    id="payment"
+                    name="payment"
+                    value={formData.payment}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="design">Design URL</label>
+                  <input
+                    type="text"
+                    id="design"
+                    name="design"
+                    value={formData.design}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label htmlFor="notes">Notes</label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                ></textarea>
-              </div>
-              <div className="form-group">
-                <label htmlFor="design">Design URL</label>
-                <input
-                  type="text"
-                  id="design"
-                  name="design"
-                  value={formData.design}
-                  onChange={handleInputChange}
-                />
+
+              <div className="form-section full-width">
+                <div className="form-group">
+                  <label htmlFor="notes">Notes</label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                  ></textarea>
+                </div>
               </div>
 
               <button type="submit" className="btn btn-accent submit-button">
@@ -463,63 +535,10 @@ export default function BookingScreen() {
               </button>
             </form>
           </div>
-        </div>
-      )}
 
-      <div className="bookings-list">
-        <h2>Bookings List</h2>
-        <table className="bookings-table">
-          <thead>
-            <tr>
-              <th>Client</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Notes</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bookings.length > 0 ? (
-              bookings.map((booking) => (
-                <tr key={booking._id}>
-                  <td>{booking.client.name}</td>
-                  <td>{new Date(booking.bookingDate).toLocaleDateString()}</td>
-                  <td>{booking.status}</td>
-                  <td>{booking.notes}</td>
-                  <td>
-                    <button
-                      onClick={() => {
-                        setSelectedBooking(booking);
-                        setShowBookingDetails(true);
-                       
-                      }}
-                    >
-                      View Details
-                    </button>
-                    {user && user.role === "admin" && (
-                      <>
-                        <button onClick={() => handleEditBooking(booking)}>
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteBooking(booking._id)}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5">No bookings available.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <BottomNavbar />
-    </div>
-  );
+        </div>
+    
+       <BottomNavbar />
+        </div>
+    );
 }

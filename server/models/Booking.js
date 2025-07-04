@@ -13,6 +13,9 @@ const bookingSchema = mongoose.Schema(
             type: Date,
             required: true,
         },
+        deliveryDate: {
+            type: Date,
+        },
         status: { // e.g., 'Pending', 'Confirmed', 'Completed', 'Cancelled'
             type: String,
             required: true,
@@ -30,7 +33,15 @@ const bookingSchema = mongoose.Schema(
         
         design: {
             type: String, //url for the design image
-            required: false,
+            required: true,
+        },
+        price: {
+            type: Number,
+            default: 0,
+        },
+        payment: {
+            type: Number,
+            default: 0,
         }
     },
     {

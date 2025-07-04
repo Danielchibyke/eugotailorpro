@@ -1,5 +1,5 @@
-/* client/src/components/OrderCard.css */
-.order-card {
+/* client/src/components/BookingCard.css */
+.booking-card {
     background-color: var(--color-background-card);
     padding: var(--spacing-md);
     border-radius: var(--border-radius-md);
@@ -8,9 +8,17 @@
     border-top: 5px solid var(--color-primary); /* Accent line for cards */
     display: flex;
     flex-direction: column;
+    gap: var(--spacing-md);
+    cursor: pointer; /* Indicate that the card is clickable */
+    transition: all 0.2s ease-in-out;
 }
 
-.order-card-header {
+.booking-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--box-shadow-lg);
+}
+
+.booking-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -19,14 +27,14 @@
     border-bottom: 1px solid var(--color-border);
 }
 
-.order-client-name {
+.booking-client-name {
     font-size: var(--font-size-h3);
     color: var(--color-primary);
     margin: 0;
     font-weight: 600;
 }
 
-.order-status {
+.booking-status {
     padding: 4px 8px;
     border-radius: var(--border-radius-sm);
     font-size: var(--font-size-small);
@@ -47,7 +55,13 @@
     background-color: var(--color-error); /* Red for cancelled */
 }
 
-.order-card-body {
+.expand-icon {
+    margin-left: var(--spacing-sm);
+    font-size: var(--font-size-lg);
+    color: var(--color-text-medium);
+}
+
+.booking-card-body {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -56,11 +70,11 @@
     flex-grow: 1; /* Allow content to expand */
 }
 
-.order-details {
+.booking-details {
     flex: 2; /* Take more space for details */
 }
 
-.order-detail-item {
+.booking-detail-item {
     font-size: var(--font-size-body);
     color: var(--color-text-medium);
     margin-bottom: var(--spacing-xs);
@@ -72,7 +86,7 @@
     margin-right: var(--spacing-xs);
 }
 
-.order-design-thumbnail {
+.booking-design-thumbnail {
     flex: 1; /* Take less space for thumbnail */
     min-width: 80px; /* Minimum size for thumbnail */
     max-width: 100px; /* Maximum size for thumbnail */
@@ -83,13 +97,19 @@
     box-shadow: var(--box-shadow-sm);
 }
 
-.order-design-thumbnail img {
+.booking-design-thumbnail img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.order-card-actions {
+.booking-card-expanded-details {
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.booking-card-actions {
     display: flex;
     justify-content: flex-end; /* Align buttons to the right */
     gap: var(--spacing-sm);
@@ -127,4 +147,33 @@
 .btn-icon-danger:hover {
     background-color: rgba(var(--color-error), 0.1);
     color: var(--color-error);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .booking-card-body {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .booking-details,
+    .booking-design-thumbnail {
+        width: 100%;
+        max-width: none;
+        min-width: auto;
+    }
+
+    .booking-design-thumbnail {
+        margin-top: var(--spacing-md);
+    }
+
+    .booking-card-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-icon {
+        flex-grow: 1;
+        justify-content: center;
+    }
 }

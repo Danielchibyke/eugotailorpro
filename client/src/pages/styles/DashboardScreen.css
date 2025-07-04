@@ -1,5 +1,4 @@
-/* client/src/pages/DashboardScreen.css */
-/* Existing styles from previous step */
+/* client/src/pages/styles/DashboardScreen.css */
 
 .dashboard-container {
     padding-bottom: 70px; /* Space for the fixed bottom navbar */
@@ -9,135 +8,92 @@
     margin-top: 140px;
 }
 
-.dashboard-header {
-    background-color: var(--color-background-card);
-    padding: var(--spacing-md);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--box-shadow-sm);
-    margin-bottom: var(--spacing-md);
-}
 
-.dashboard-header-left {
-    display: flex;
-    align-items: center;
-}
-
-.dashboard-logo {
-    height: 40px; /* Adjust as needed */
-    margin-right: var(--spacing-sm);
-}
-
-.dashboard-heading {
-    font-size: var(--font-size-h2);
-    color: var(--color-primary);
-    margin-bottom: 0; /* Override default h2 margin */
-}
 
 .dashboard-content {
-    display: flex;
-
     flex-grow: 1;
     padding: var(--spacing-md);
 }
 
-.dashboard-info {
-    font-size: var(--font-size-body);
-    color: var(--color-text-medium);
-    margin-bottom: var(--spacing-sm);
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
 }
 
-.dashboard-info-role {
-    font-size: var(--font-size-small);
-    color: var(--color-text-light);
-    margin-bottom: var(--spacing-lg);
-}
-
-.dashboard-card {
+.grid-item {
     background-color: var(--color-background-card);
     padding: var(--spacing-md);
     border-radius: var(--border-radius-md);
     box-shadow: var(--box-shadow-md);
-    margin-bottom: var(--spacing-lg);
 }
 
-.dashboard-card h3 {
-    font-size: var(--font-size-h3);
-    color: var(--color-accent);
-    margin-bottom: var(--spacing-md);
-}
-
-.order-summary {
+.summary-metrics {
+    grid-column: 1 / -1; /* Span full width */
     display: flex;
+    justify-content: space-around;
     flex-wrap: wrap;
     gap: var(--spacing-md);
-    justify-content: space-around;
-    margin-bottom: var(--spacing-md);
 }
 
-.order-item {
-    text-align: center;
-    padding: var(--spacing-sm);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-    flex: 1; /* Distribute space */
-    min-width: 120px; /* Minimum width for items */
-}
-
-.order-label {
-    display: block;
-    font-size: var(--font-size-small);
-    color: var(--color-text-light);
-    margin-bottom: var(--spacing-xs);
-}
-
-.order-value {
-    font-size: var(--font-size-h3);
-    font-weight: 700;
-    color: var(--color-accent);
-}
-
-.dashboard-button {
-    margin-top: var(--spacing-md);
-}
-
-.dashboard-placeholder-text {
-    text-align: center;
-    color: var(--color-text-light);
-    margin-top: var(--spacing-xl);
-}
-
-/* New styles for dashboard sections */
-.dashboard-section {
-    margin-bottom: var(--spacing-xl);
+.stat-card {
+    background-color: #fff;
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--box-shadow-sm);
     display: flex;
-    align-self: start;
-    flex-direction: column;
-    justify-content: center;
-    background-color: blueviolet;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: 1;
+    min-width: 200px;
+    border-top: 4px solid;
+}
 
+.stat-card-icon {
+    font-size: 2.5rem;
+    color: var(--color-primary);
+}
+
+.stat-card-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-card-value {
+    font-size: var(--font-size-h2);
+    font-weight: 700;
+}
+
+.stat-card-label {
+    font-size: var(--font-size-body);
+    color: var(--color-text-medium);
+}
+
+.quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
 }
 
 .section-title {
-    font-size: var(--font-size-h2);
+    font-size: var(--font-size-h3);
     color: var(--color-accent);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+}
+
+.recent-bookings {
+    grid-column: 1 / -1; /* Span full width */
 }
 
 .orders-list {
     display: flex;
-    flex-direction: row;
-    flex-grow: calc(100% - 200px); /* Adjust to fill available space */
-    flex-wrap: wrap;
-    justify-content: space-around;
-    align-items: stretch;
-    padding: var(--spacing-md);
-
+    flex-direction: column;
     gap: var(--spacing-md);
 }
 
-/* Specific styling for the summary card for orders */
-.summary-card {
-    border-top: none; /* No accent line on this general summary card */
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .summary-metrics {
+        flex-direction: column;
+    }
 }
