@@ -5,7 +5,7 @@ const transactionSchema = mongoose.Schema(
     {
         client: { 
             type: mongoose.Schema.Types.ObjectId,
-            required: true,
+            required: false, // Make client optional
             ref: 'Client',
         },
         type: { // e.g., 'Sale', 'Refund', 'Payment'
@@ -22,6 +22,15 @@ const transactionSchema = mongoose.Schema(
         },
         description: {
             type: String,
+        },
+        voucherNo: {
+            type: String,
+            required: false,
+        },
+        paymentMethod: { // 'Cash' or 'Bank'
+            type: String,
+            required: true,
+            enum: ['Cash', 'Bank'],
         },
         date: {
             type: Date,

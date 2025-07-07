@@ -72,14 +72,20 @@ const DashboardScreen = () => {
     const handleCompleteOrder = async (orderId) => {
         try {
             const { data } = await api.put(`/bookings/${orderId._id}`, { status: 'Completed' });
-            setBookings(bookings.map(b => (b._id === orderId ? data : b)));
+            setBookings(bookings.map(b => (b._id === orderId._id ? data : b)));
+            setError(null); // Clear any previous error
+            console.log("Booking status updated successfully:", data);
         } catch (err) {
             setError("Failed to update booking status.");
         }
     };
 
+  
     if (loading) {
-        return <div className="loading-spinner">Loading Dashboard...</div>;
+        return <div className="loading-container">
+            <div className="spinner"></div>
+            Loading Clients...
+            </div>;
     }
 
     if (error) {
@@ -117,6 +123,11 @@ const DashboardScreen = () => {
                             <button className="btn btn-secondary" onClick={() => navigate('/clients')}>
                                 <FaUserPlus /> New Client
                             </button>
+                            {user && user.role === 'admin' && (
+                                <button className="btn" onClick={() => navigate('/register')}>
+                                    <FaUserPlus /> Register New User
+                                </button>
+                            )}
                         </div>
 
                         <div className="grid-item recent-bookings">

@@ -11,11 +11,12 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginScreen from "./pages/LoginScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import DashboardScreen from "./pages/DashboardScreen";
-import HomeScreen from "./pages/HomeScreen";
 import BookingDetailScreen from "./pages/BookingDetailScreen";
+import LoadingScreen from "./components/LoadingScreen";
 
 import { BookingProvider } from "./context/BookingContext";
 import FinancialsScreen from "./pages/FinancialsScreen";
+import CashBookScreen from "./pages/CashBookScreen";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ClientManagementScreen from "./pages/ClientManagementScreen";
 import BookingScreen from "./pages/BookingScreen";
@@ -41,10 +42,19 @@ import BottomNavbar from "./components/BottomNavbar";
 
 function AppContent() {
   const { user, loading } = useAuth();
-  
+  const [showInitialLoading, setShowInitialLoading] = React.useState(true);
 
-  if (loading) {
-    return <div className="loading-spinner">Loading Application...</div>;
+  React.useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => {
+        setShowInitialLoading(false);
+      }, 3000); // 10 seconds delay
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  if (loading || showInitialLoading) {
+    return <LoadingScreen />;
   }
 
   return (
@@ -52,11 +62,16 @@ function AppContent() {
       <TopNavbar />
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<HomeScreen />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginScreen />} />
-        <Route path="/register" element={<RegisterScreen />} />
 
-        {/* Protected Routes */}
+        {/* Admin-only Routes */}
+        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+          <Route path="/register" element={<RegisterScreen />} />
+        </Route>
+
+        {/* Protected Routes (Admin and Staff) */}
+        <Route element={<ProtectedRoute allowedRoles={["admin", "staff"]} />}>
         <Route element={<ProtectedRoute allowedRoles={["admin", "staff"]} />}>
           <Route path="/dashboard" element={<DashboardScreen />} />
           <Route path="/bookings/:id/edit" element={
@@ -76,26 +91,19 @@ function AppContent() {
           {/* Client Management Routes */}
           <Route path="/clients" element={<ClientManagementScreen />} />
           <Route path="/clients/add" element={<ClientManagementScreen />} />
-          {/* <Route path="/clients/:id/edit" element={<ClientDetailScreen />} /> */}
+          <Route path="/clients/:id" element={<ClientManagementScreen />} />
 
           {/* Financials Route */}
           <Route path="/financials" element={<FinancialsScreen />} />
+          <Route path="/cashbook" element={<CashBookScreen />} />
 
           {/* Add other protected routes here (e.g., Profile) */}
           {/* <Route path="/profile" element={<ProfileScreen />} /> */}
         </Route>
+        </Route>
 
         {/* Fallback/Default redirect if no route matches */}
-        <Route
-          path="*"
-          element={
-            user ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
-        />
+     
       </Routes>
       <BottomNavbar />
     </Router>

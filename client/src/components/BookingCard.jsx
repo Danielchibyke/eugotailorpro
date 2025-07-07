@@ -41,6 +41,12 @@ const BookingCard = ({ booking, onEdit, onDelete, onComplete }) => {
         year: 'numeric'
     }) : 'N/A';
 
+    const formattedReminderDate = booking.reminderDate ? new Date(booking.reminderDate).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    }) : 'N/A';
+
     return (
         <div className="booking-card" onClick={toggleExpanded}>
             <div className="booking-card-header">
@@ -59,6 +65,9 @@ const BookingCard = ({ booking, onEdit, onDelete, onComplete }) => {
                     </p>
                     <p className="booking-detail-item">
                         <span className="detail-label">Delivery Date:</span> {formattedDeliveryDate}
+                    </p>
+                    <p className="booking-detail-item">
+                        <span className="detail-label">Reminder Date:</span> {formattedReminderDate}
                     </p>
                     <p className="booking-detail-item">
                         <span className="detail-label">Booked By:</span> {booking.bookedBy?.name || 'N/A'}

@@ -36,7 +36,7 @@ const TopNavbar = () => {
                         <button onClick={() => setProfileMenuOpen(!isProfileMenuOpen)} className="profile-menu-trigger">
                             <FaUserCircle />
                         </button>
-                        {isProfileMenuOpen && (
+                        {isProfileMenuOpen && user !== null && (
                             <div className="profile-menu-dropdown">
                                 <div className="profile-info">
                                     <p>{user.name}</p>

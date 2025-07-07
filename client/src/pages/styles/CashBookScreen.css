@@ -1,0 +1,372 @@
+/* CashBookScreen.css */
+
+.cashbook-screen {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--color-primary);
+    font-family: 'Arial', sans-serif;
+    margin-top: 70px;
+    margin-bottom: 70px;
+}
+
+.cashbook-header {
+    background-color: var(--color-primary); /* Primary blue */
+    color: var(--color-text-light);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cashbook-header h1 {
+    margin: 0;
+    font-size: 1.8em;
+    color: var(--color-text-light);
+}
+
+.balance-button {
+    background-color: #28a745; /* Green for success/action */
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.balance-button:hover {
+    background-color: #218838;
+}
+/* Styles for the filter section */
+.cashbook-header .filter-section {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between elements */
+    margin-top: 15px;
+    padding: 10px;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    background-color: #f9f9f9;
+    justify-content: center; /* Center the filter elements */
+    flex-wrap: wrap; /* Allow elements to wrap on smaller screens */
+    border-radius: 5px;
+}
+
+.cashbook-header .filter-section label {
+    font-weight: bold;
+    color: #555;
+    white-space: nowrap; /* Prevent label from wrapping */
+}
+
+.cashbook-header .filter-section input[type="date"] {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    color: #333;
+    flex-grow: 1; /* Allow input fields to grow */
+    max-width: 180px; /* Limit max width for date inputs */
+}
+
+.cashbook-header .filter-section button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    white-space: nowrap; /* Prevent button text from wrapping */
+}
+
+.cashbook-header .filter-section .filter-button {
+    background-color: #007bff; /* Primary blue */
+    color: white;
+}
+
+.cashbook-header .filter-section .filter-button:hover {
+    background-color: #0056b3;
+}
+
+.cashbook-header .filter-section .clear-filter-button {
+    background-color: var(--color-accent); /* Red for clear/danger */
+    color: white;
+}
+
+.cashbook-header .filter-section .clear-filter-button:hover {
+    background-color: #c82333;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .cashbook-header .filter-section {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 10px;
+    }
+
+    .cashbook-header .filter-section label,
+    .cashbook-header .filter-section input,
+    .cashbook-header .filter-section button {
+        width: 100%; /* Full width on small screens */
+        box-sizing: border-box; /* Include padding in width */
+    }
+
+    .cashbook-header .filter-section input[type="date"] {
+        max-width: 100%; /* Override max-width for small screens */
+    }
+
+    .cashbook-header .filter-section button {
+        margin-top: 5px; /* Add some space between stacked buttons */
+    }
+}
+
+.cashbook-main {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-x: auto; /* Allows horizontal scrolling for wide tables */
+}
+
+.cashbook-table-container {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    overflow: hidden; /* Ensures borders are rounded */
+}
+
+.cashbook-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+    white-space: nowrap; /* Prevent text wrapping in columns */
+}
+
+.cashbook-table th,
+.cashbook-table td {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.cashbook-table thead th {
+    background-color: #e9ecef;
+    font-weight: bold;
+    text-align: center;
+    color: #343a40;
+}
+
+.cashbook-table thead th.date-header {
+    min-width: 90px; /* Ensure date column has enough space */
+}
+
+.cashbook-table thead th.particulars-header {
+    min-width: 180px; /* Wider for descriptions */
+}
+
+.cashbook-table thead th.voucher-header {
+    min-width: 80px; /* For voucher numbers */
+}
+
+.cashbook-table thead th.amount-header {
+    min-width: 100px; /* For currency amounts */
+    text-align: right;
+}
+
+/* Specific column alignment for amounts in body */
+.cashbook-table tbody td.amount-col {
+    text-align: right;
+}
+
+/* Alternating row colors for readability */
+.cashbook-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.cashbook-table tbody tr:hover {
+    background-color: #e2e6ea;
+}
+
+/* Styling for Balance b/d and c/d rows */
+.cashbook-table .balance-row,
+.cashbook-table .balance-bd-row {
+    font-weight: bold;
+    background-color: #e0f7fa; /* Light blue for balance rows */
+}
+
+.cashbook-table .balance-cd-row {
+    background-color: #fff3cd; /* Light yellow for Balance c/d, for distinction */
+}
+
+/* Total row styling */
+.cashbook-table .totals-row {
+    background-color: #cfe2ff; /* Light blue for totals */
+    font-weight: bold;
+    border-top: 2px solid #007bff;
+    border-bottom: 2px solid #007bff;
+}
+
+.cashbook-table .totals-row strong {
+    color: #0056b3;
+}
+
+/* Visual divider for Debit/Credit sections in total row */
+.cashbook-table .totals-row td.divider {
+    border-left: 2px solid #007bff;
+    border-right: 2px solid #007bff;
+}
+
+/* Specific styling for Balance c/d row that mimics the total row */
+.cashbook-table .balance-row strong {
+    color: #0056b3;
+}
+
+/* Loading spinner */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+}
+
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #007bff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+/* Add this to CashBookScreen.css for balanced period highlighting */
+.balanced-period-row {
+    background-color: #e0ffe0 !important; /* Light green for balanced periods */
+}
+/* Ensure text in balanced rows is still readable */
+.balanced-period-row td {
+    color: #333;
+}
+/* Optional: Style for the last balanced date display in header */
+.cashbook-header .last-balanced-info {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.8);
+    margin-left: 15px;
+}
+
+
+
+/* Clear bold separator for Debit/Credit */
+/* The 5th child (th/td) is the 'Bank (NGN)' column on the Debit side */
+.cashbook-table th:nth-child(5),
+.cashbook-table td:nth-child(5) {
+    border-right: 2px solid #6c757d; /* A slightly darker grey border */
+}
+
+/* The 6th child (th/td) is the 'Particulars' column on the Credit side */
+.cashbook-table th:nth-child(6),
+.cashbook-table td:nth-child(6) {
+    border-left: 2px solid #6c757d; /* Matching left border */
+}
+
+/* Ensure the divider in the totals row keeps its distinct styling */
+.cashbook-table .totals-row td.divider {
+    border-left: 2px solid #007bff; /* Keep blue for total rows */
+    border-right: 2px solid #007bff; /* Keep blue for total rows */
+}
+
+
+/* --- Mobile Responsiveness (using Media Queries) --- */
+
+/* For screens up to 768px wide (e.g., tablets in portrait, large phones) */
+@media (max-width: 768px) {
+    .cashbook-header {
+        padding: 10px 15px;
+        flex-direction: column; /* Stack elements vertically */
+        text-align: center;
+    }
+
+    .cashbook-header h1 {
+        font-size: 1.5em; /* Slightly smaller title */
+        margin-bottom: 10px;
+    }
+
+    .cashbook-header .last-balanced-info {
+        font-size: 0.8em;
+        margin-left: 0;
+        margin-top: 5px;
+    }
+
+    .balance-button {
+        padding: 8px 15px;
+        font-size: 0.9em;
+        margin-top: 10px;
+    }
+
+    .cashbook-main {
+        padding: 10px; /* Reduced main padding */
+    }
+
+    .cashbook-table {
+        font-size: 0.8em; /* Smaller font size for all table content */
+    }
+
+    .cashbook-table th,
+    .cashbook-table td {
+        padding: 8px 6px; /* Reduced padding for cells */
+    }
+
+    /* Adjust minimum widths for better fit on tablets/larger phones */
+    .cashbook-table thead th.date-header {
+        min-width: 80px;
+    }
+    .cashbook-table thead th.particulars-header {
+        min-width: 120px; /* Maintain some width for descriptions */
+    }
+    .cashbook-table thead th.voucher-header {
+        min-width: 60px;
+    }
+    .cashbook-table thead th.amount-header {
+        min-width: 80px; /* Reduced amount column width */
+    }
+
+    /* Ensure the separator is still clear on mobile */
+    .cashbook-table th:nth-child(5),
+    .cashbook-table td:nth-child(5) {
+        border-right: 2px solid #6c757d;
+    }
+    .cashbook-table th:nth-child(6),
+    .cashbook-table td:nth-child(6) {
+        border-left: 2px solid #6c757d;
+    }
+}
+
+/* For very narrow screens (e.g., most smartphones in portrait) */
+@media (max-width: 480px) {
+    .cashbook-table {
+        font-size: 0.75em; /* Even smaller font size */
+    }
+    .cashbook-table th,
+    .cashbook-table td {
+        padding: 6px 4px; /* Further reduced padding */
+    }
+    /* Further adjust minimum widths for very small screens */
+    .cashbook-table thead th.date-header {
+        min-width: 70px;
+    }
+    .cashbook-table thead th.particulars-header {
+        min-width: 100px;
+    }
+    .cashbook-table thead th.voucher-header {
+        min-width: 50px;
+    }
+    .cashbook-table thead th.amount-header {
+        min-width: 70px;
+    }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

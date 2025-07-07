@@ -7,7 +7,7 @@ import Client from '../models/Client.js'; // Needed to validate client existence
 // @route   POST /api/bookings
 // @access  Private (Admin/Staff)
 const createBooking = asyncHandler(async (req, res) => {
-    const { client, bookingDate, deliveryDate, status, notes, design, price, payment } = req.body;
+    const { client, bookingDate, deliveryDate, status, notes, design, price, payment, reminderDate } = req.body;
 
     // Basic validation
     if (!client || !bookingDate ) {
@@ -31,7 +31,8 @@ const createBooking = asyncHandler(async (req, res) => {
         bookedBy: req.user._id, // User who created the booking
         design,
         price,
-        payment
+        payment,
+        reminderDate
     });
 
     res.status(201).json(booking);
@@ -68,7 +69,7 @@ const getBookingById = asyncHandler(async (req, res) => {
 // @route   PUT /api/bookings/:id
 // @access  Private (Admin/Staff)
 const updateBooking = asyncHandler(async (req, res) => {
-    const { client, bookingDate, status, notes, deliveryDate, design, price, payment } = req.body;
+    const { client, bookingDate, status, notes, deliveryDate, design, price, payment, reminderDate } = req.body;
 
     const booking = await Booking.findById(req.params.id);
 
@@ -78,6 +79,7 @@ const updateBooking = asyncHandler(async (req, res) => {
         booking.deliveryDate = deliveryDate || booking.deliveryDate;
         booking.status = status || booking.status;
         booking.notes = notes || booking.notes;
+        booking.reminderDate = reminderDate || booking.reminderDate;
         design && (booking.design = design); // Update design if provided
         booking.price = price || booking.price;
         booking.payment = payment || booking.payment;

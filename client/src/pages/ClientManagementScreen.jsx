@@ -1,19 +1,22 @@
 // client/src/pages/ClientManagementScreen.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BottomNavbar from "../components/BottomNavbar";
 import api from "../utils/api";
 import "../App.css";
 import "./styles/ClientManagementScreen.css"; // Create this CSS file next
+import { useNotification } from "../context/NotificationContext";
+import { FaPlus, FaUserPlus, FaClipboardList, FaTasks, FaUsers, FaDollarSign } from 'react-icons/fa';
+import { FiEdit, FiTrash2, FiCheckCircle, FiChevronDown, FiChevronUp } from 'react-icons/fi'; // For action icons
 
 const ClientManagementScreen = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
-const { id } = useParams(); // Destructure id from useParams()
+  const { id } = useParams(); // Destructure id from useParams()
+  const { showNotification } = useNotification();
 
   const defaultMeasurement = {
     chest: [0, 0],
@@ -40,11 +43,24 @@ const { id } = useParams(); // Destructure id from useParams()
     address: "",
     measurement: defaultMeasurement,
   });
+  const fetchClients = useCallback(async () => {
+    setLoading(true);
+    // setError(""); // Replaced with showNotification
+    try {
+      const { data } = await api.get("/clients");
+      setClients(data || []);
+    } catch (err) {
+      showNotification(err.response?.data?.msg || "Failed to fetch clients.", "error");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchClientById = async (clientId) => {
       setLoading(true);
-      setError("");
+      // setError(""); // Replaced with showNotification
       try {
         const { data } = await api.get(`/clients/${clientId}`);
         if (data) {
@@ -52,10 +68,10 @@ const { id } = useParams(); // Destructure id from useParams()
           setViewingClientDetails(true); // Set to true for viewing
           setIsFormVisible(false); // Ensure form is hidden
         } else {
-          setError("Client not found.");
+          showNotification("Client not found.", "error");
         }
       } catch (err) {
-        setError(err.response?.data?.msg || "Failed to fetch client.");
+        showNotification(err.response?.data?.msg || "Failed to fetch client.", "error");
         console.error(err);
       } finally {
         setLoading(false);
@@ -68,21 +84,9 @@ const { id } = useParams(); // Destructure id from useParams()
       fetchClients();
       setViewingClientDetails(false); // Ensure viewing is false when not on a specific client page
     }
-  }, [id]);
+  }, [id, fetchClients]);
 
-  const fetchClients = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const { data } = await api.get("/clients");
-      setClients(data || []);
-    } catch (err) {
-      setError(err.response?.data?.msg || "Failed to fetch clients.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+ 
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -126,8 +130,7 @@ const { id } = useParams(); // Destructure id from useParams()
     });
     setIsFormVisible(true);
     setViewingClientDetails(false); // Ensure viewing details is false when adding a new client
-    setSuccessMessage(""); // Clear any previous success message
-    setError(""); // Clear any previous error
+    
   };
 
   const handleEditClientClick = (client) => {
@@ -141,14 +144,13 @@ const { id } = useParams(); // Destructure id from useParams()
     });
     setIsFormVisible(true);
     setViewingClientDetails(false); // Ensure viewing details is false when editing
-    setSuccessMessage("");
-    setError("");
+    
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccessMessage("");
+    // setError(""); // Replaced with showNotification
+    // setSuccessMessage(""); // Replaced with showNotification
 
     try {
       if (currentClient) {
@@ -161,7 +163,7 @@ const { id } = useParams(); // Destructure id from useParams()
         setClients(
           clients.map((client) => (client._id === data._id ? data : client))
         );
-        setSuccessMessage("Client updated successfully!");
+        showNotification("Client updated successfully!", "success");
         if (id) {
           setCurrentClient(data); // Update currentClient with the latest data
           setViewingClientDetails(true); // Go back to viewing details
@@ -171,7 +173,7 @@ const { id } = useParams(); // Destructure id from useParams()
         // Add new client
         const { data } = await api.post("/clients", formData);
         setClients([data, ...clients]); // Add new client to the top
-        setSuccessMessage("Client added successfully!");
+        showNotification("Client added successfully!", "success");
         if (id) {
           navigate('/clients'); // Navigate back to general client list if came from specific client view
         }
@@ -180,13 +182,13 @@ const { id } = useParams(); // Destructure id from useParams()
       fetchClients(); // Re-fetch to ensure latest data and sort order
     } catch (err) {
       console.error("Client form submission error:", err);
-      setError(
+      showNotification(
         err.response?.data?.msg ||
-          "Failed to save client. Please check your inputs."
+          "Failed to save client. Please check your inputs.", "error"
       );
       // For validation errors from backend, display specific error messages
       if (err.response?.data?.errors) {
-        setError(err.response.data.errors.map((e) => e.msg).join(", "));
+        showNotification(err.response.data.errors.map((e) => e.msg).join(", "), "error");
       }
     }
   };
@@ -205,35 +207,38 @@ const { id } = useParams(); // Destructure id from useParams()
         "Are you sure you want to delete this client? This cannot be undone."
       )
     ) {
-      setError("");
-      setSuccessMessage("");
+      // setError(""); // Replaced with showNotification
+      // setSuccessMessage(""); // Replaced with showNotification
       try {
         await api.delete(`/clients/${clientId}`);
         setClients(clients.filter((client) => client._id !== clientId));
-        setSuccessMessage("Client deleted successfully!");
+        showNotification("Client deleted successfully!", "success");
         if (currentClient && currentClient._id === clientId) {
           navigate('/clients'); // Navigate back to general client list if the viewed client was deleted
         }
       } catch (err) {
         console.error("Failed to delete client:", err);
-        setError(
+        showNotification(
           err.response?.data?.msg ||
-            "Failed to delete client. They might have associated bookings. Or you do not have permission to delete this client."
+            "Failed to delete client. They might have associated bookings. Or you do not have permission to delete this client.", "error"
         );
       }
     }
   };
 
   if (loading) {
-    return <div className="loading-spinner">Loading Clients...</div>;
-  }
+    return <div className="loading-container">
+        <div className="spinner"></div>
+        Loading Clients...
+        </div>;
+}
 
   return (
     <div className="client-management-container background">
       <header className="detail-header">
         {viewingClientDetails || isFormVisible ? (
-          <button onClick={() => navigate('/clients')} className="back-button">
-            &larr; Back to Clients
+          <button onClick={() => navigate(-1)} className="back-button">
+            &larr; Back
           </button>
         ) : (
           <button onClick={() => navigate(-1)} className="back-button">
@@ -246,21 +251,18 @@ const { id } = useParams(); // Destructure id from useParams()
             onClick={handleAddClientClick}
             className="btn btn-primary add-button"
           >
-            Add New Client
+            <FaUserPlus /> New Client
           </button>
         )}
       </header>
 
       <main className="client-management-content">
-        {error && <p className="alert alert-error">{error}</p>}
-        {successMessage && (
-          <p className="alert alert-success">{successMessage}</p>
-        )}
+        
 
         {viewingClientDetails && currentClient && (
           <div className="client-detail-card">
-            <button onClick={() => navigate('/clients')} className="back-button">
-              &larr; Back to Clients
+            <button onClick={() => navigate(-1)} className="back-button">
+              &larr;
             </button>
             <h2>Client Details</h2>
             <div className="detail-section">
@@ -294,9 +296,10 @@ const { id } = useParams(); // Destructure id from useParams()
             <div className="detail-actions">
               <button
                 onClick={() => handleEditClientClick(currentClient)}
-                className="btn btn-info"
+                className="btn  btn-icon"
               >
-                Edit Client
+               <FiEdit />Edit
+                
               </button>
             </div>
           </div>
@@ -347,6 +350,7 @@ const { id } = useParams(); // Destructure id from useParams()
                       className="form-control"
                     />
                   </div>
+                </div>
                   <div className="form-group">
                     <label htmlFor="address">Address (Optional)</label>
                     <textarea
@@ -354,11 +358,10 @@ const { id } = useParams(); // Destructure id from useParams()
                       name="address"
                       value={formData.address}
                       onChange={handleInputChange}
-                      rows="2"
+                      rows="2"                     
                       className="form-control"
                     ></textarea>
                   </div>
-                </div>
                 <div className="form-group full-width">
                   <label htmlFor="measurements">Measurements</label>
                   <div id="measurements">
@@ -515,7 +518,7 @@ const { id } = useParams(); // Destructure id from useParams()
                   </div>
                 </div>
                 <div className="form-actions">
-                  <button type="submit" className="btn btn-accent save-button">
+                  <button type="submit" className="btn  save-button">
                     {currentClient ? "Update Client" : "Add Client"}
                   </button>
                   <button
@@ -526,7 +529,7 @@ const { id } = useParams(); // Destructure id from useParams()
                         setViewingClientDetails(true);
                       }
                     }}
-                    className="btn btn-secondary cancel-button"
+                    className="btn cancel-button"
                   >
                     Cancel
                   </button>
@@ -556,30 +559,41 @@ const { id } = useParams(); // Destructure id from useParams()
                 <div key={client._id} className="client-card">
                   <div className="client-info">
                     <h3>{client.name}</h3>
-                    <p>
-                      <strong>Phone:</strong> {client.phone}
-                    </p>
-                    {client.email && (
-                      <p>
-                        <strong>Email:</strong> {client.email}
-                      </p>
-                    )}
-                    {client.address && (
-                      <p>
-                        <strong>Address:</strong> {client.address}
-                      </p>
+                    <div className="client-contact-info">
+                      <p><strong>Phone:</strong> {client.phone}</p>
+                      {client.email && <p><strong>Email:</strong> {client.email}</p>}
+                      {client.address && <p><strong>Address:</strong> {client.address}</p>}
+                    </div>
+                    {client.measurement && (
+                      <div className="client-measurement-summary">
+                        <h4>Measurements Summary:</h4>
+                        <div className="measurement-summary-grid">
+                          <p><strong>Chest:</strong> {client.measurement.chest?.join(" / ") || 'N/A'}</p>
+                          <p><strong>Shoulder:</strong> {client.measurement.shoulder || 'N/A'}</p>
+                          <p><strong>Neck:</strong> {client.measurement.neck || 'N/A'}</p>
+                          <p><strong>Waist:</strong> {client.measurement.waist || 'N/A'}</p>
+                          <p><strong>Sleeve Length:</strong> {client.measurement.sleeveLength?.join(" / ") || 'N/A'}</p>
+                          <p><strong>Round Sleeve:</strong> {client.measurement.roundsleeve?.join(" / ") || 'N/A'}</p>
+                          <p><strong>Top Length:</strong> {client.measurement.toplength || 'N/A'}</p>
+                          <p><strong>Trouser Length:</strong> {client.measurement.trouserlength || 'N/A'}</p>
+                          <p><strong>Thigh:</strong> {client.measurement.thigh || 'N/A'}</p>
+                          <p><strong>Knee:</strong> {client.measurement.knee || 'N/A'}</p>
+                          <p><strong>Ankle:</strong> {client.measurement.ankle || 'N/A'}</p>
+
+                        </div>
+                      </div>
                     )}
                   </div>
                   <div className="client-actions">
                     <button
                       onClick={() => handleEditClientClick(client)}
-                      className="btn btn-info edit-client-btn"
+                      className="btn  btn-icon"
                     >
-                      Edit
+                     <FiEdit /> Edit
                     </button>
                     <button
                       onClick={() => handleDeleteClient(client._id)}
-                      className="btn btn-danger delete-client-btn"
+                      className="btn btn-icon-danger"
                     >
                       Delete
                     </button>

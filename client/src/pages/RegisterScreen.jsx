@@ -1,7 +1,8 @@
 // client/src/pages/RegisterScreen.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
+import api from '../utils/api';
 import '../App.css'; // For general app structure
 import './styles/RegisterScreen.css'; // Import specific styles
 
@@ -11,38 +12,48 @@ const RegisterScreen = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [role, setRole] = useState('staff'); // Default role
-    const [error, setError] = useState('');
+    
 
-    const { user, loading, register } = useAuth();
     const navigate = useNavigate();
+    const { showNotification } = useNotification();
 
-    useEffect(() => {
-        if (user) {
-            navigate('/dashboard');
-        }
-    }, [user, navigate]);
+    
 
     const submitHandler = async (e) => {
         e.preventDefault();
-        setError('');
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            showNotification('Passwords do not match', 'error');
             return;
         }
 
+        if (!window.confirm(`Are you sure you want to register ${name} as a new ${role}?`)) {
+            return; // User cancelled
+        }
+
         try {
-            await register(name, email, password, role);
+            // Direct API call to register a new user
+            await api.post('/auth/register', { name, email, password, role });
+            showNotification(`User ${name} registered successfully!`, 'success');
+            // Reset form fields
+            setName('');
+            setEmail('');
+            setPassword('');
+            setConfirmPassword('');
+            setRole('staff'); // Reset to default
+            navigate('/dashboard'); // Navigate back to dashboard
         } catch (err) {
-            setError(err || 'Registration failed.');
+            showNotification(err.response?.data?.message || 'Registration failed.', 'error');
         }
     };
 
     return (
         <div className="register-screen-container">
+            <button onClick={() => navigate(-1)} className="back-button">
+                &larr; Back
+            </button>
             <div className="register-form-container">
                 <h2>Register</h2>
-                {error && <p className="alert alert-error">{error}</p>}
                 <form onSubmit={submitHandler}>
                     <div className="form-group">
                         <label htmlFor="name">Name</label>
@@ -104,8 +115,8 @@ const RegisterScreen = () => {
                             <option value="admin">Admin</option>
                         </select>
                     </div>
-                    <button type="submit" disabled={loading} className="btn btn-primary">
-                        {loading ? 'Registering...' : 'Register'}
+                    <button type="submit"  className="btn btn-primary">
+                        Register
                     </button>
                 </form>
                 <div className="register-link">

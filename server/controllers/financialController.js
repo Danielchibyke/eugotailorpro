@@ -1,25 +1,25 @@
-// server/controllers/financialController.js
 import asyncHandler from 'express-async-handler';
 import Transaction from '../models/Transaction.js';
-import Client from '../models/Client.js'; // Needed to validate client existence
+import Client from '../models/Client.js';
+import BalanceRecord from '../models/BalanceRecord.js';
 
-// @desc    Create a new transaction
-// @route   POST /api/transactions
-// @access  Private (Admin/Staff)
+// ... (createTransaction, getTransactions, etc. - no changes needed there)
 const createTransaction = asyncHandler(async (req, res) => {
-    const { client, type, amount, currency, description, date } = req.body;
+    const { client, type, amount, currency, description, date, paymentMethod, voucherNo } = req.body;
 
     // Basic validation
-    if (!client || !type || !amount) {
+    if (!type || !amount) {
         res.status(400);
-        throw new Error('Please provide client, type, and amount for the transaction.');
+        throw new Error('Please provide type and amount for the transaction.');
     }
 
-    // Validate if client exists
-    const existingClient = await Client.findById(client);
-    if (!existingClient) {
-        res.status(404);
-        throw new Error('Client not found. Cannot record transaction without a valid client.');
+    // Validate if client exists if provided
+    if (client) {
+        const existingClient = await Client.findById(client);
+        if (!existingClient) {
+            res.status(404);
+            throw new Error('Client not found. Cannot record transaction with an invalid client.');
+        }
     }
 
     const transaction = await Transaction.create({
@@ -28,16 +28,14 @@ const createTransaction = asyncHandler(async (req, res) => {
         amount,
         currency,
         description,
+        voucherNo,
         date,
+        paymentMethod,
         recordedBy: req.user._id, // User who recorded the transaction
     });
 
     res.status(201).json(transaction);
 });
-
-// @desc    Get all transactions
-// @route   GET /api/transactions
-// @access  Private (Admin/Staff)
 const getTransactions = asyncHandler(async (req, res) => {
     // Optionally filter by client, type, date range etc.
     const transactions = await Transaction.find({})
@@ -45,10 +43,6 @@ const getTransactions = asyncHandler(async (req, res) => {
         .populate('recordedBy', 'name email'); // Populate recorder info
     res.json(transactions);
 });
-
-// @desc    Get transaction by ID
-// @route   GET /api/transactions/:id
-// @access  Private (Admin/Staff)
 const getTransactionById = asyncHandler(async (req, res) => {
     const transaction = await Transaction.findById(req.params.id)
         .populate('client', 'name email phone')
@@ -61,21 +55,27 @@ const getTransactionById = asyncHandler(async (req, res) => {
         throw new Error('Transaction not found');
     }
 });
-
-// @desc    Update transaction
-// @route   PUT /api/transactions/:id
-// @access  Private (Admin/Staff)
 const updateTransaction = asyncHandler(async (req, res) => {
-    const { client, type, amount, currency, description, date } = req.body;
+    const { client, type, amount, currency, description, date, paymentMethod, voucherNo } = req.body;
 
     const transaction = await Transaction.findById(req.params.id);
 
     if (transaction) {
-        transaction.client = client || transaction.client;
+        if (client) {
+            const existingClient = await Client.findById(client);
+            if (!existingClient) {
+                res.status(404);
+                throw new Error('Client not found. Cannot update transaction with an invalid client.');
+            }
+            transaction.client = client;
+        } else {
+            transaction.client = undefined; // Set to undefined to remove the field if client is not provided
+        }
         transaction.type = type || transaction.type;
         transaction.amount = amount || transaction.amount;
         transaction.currency = currency || transaction.currency;
         transaction.description = description || transaction.description;
+        transaction.voucherNo = voucherNo || transaction.voucherNo;
         transaction.date = date || transaction.date;
 
         const updatedTransaction = await transaction.save();
@@ -86,9 +86,44 @@ const updateTransaction = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Delete transaction
-// @route   DELETE /api/transactions/:id
-// @access  Private (Admin only)
+// @desc    Get all data for the cash book for a specific period
+// @route   GET /api/transactions/cashbook
+// @access  Private (Admin/Staff)
+const getCashBookData = asyncHandler(async (req, res) => {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+        res.status(400);
+        throw new Error('Please provide both startDate and endDate.');
+    }
+
+    const periodStartDate = new Date(startDate);
+    periodStartDate.setUTCHours(0, 0, 0, 0); // Set to the beginning of the day
+
+    const periodEndDate = new Date(endDate);
+    periodEndDate.setUTCHours(23, 59, 59, 999); // Set to the end of the day
+
+    // Find the most recent balance record on or before the period starts.
+    const lastBalanceRecord = await BalanceRecord.findOne({
+        lastBalancedDate: { $lt: periodStartDate },
+    }).sort({ lastBalancedDate: -1 });
+
+    const openingCashBalance = lastBalanceRecord ? lastBalanceRecord.cashBalance : 0;
+    const openingBankBalance = lastBalanceRecord ? lastBalanceRecord.bankBalance : 0;
+
+    // Get all transactions within the specified period.
+    const entries = await Transaction.find({
+        date: { $gte: periodStartDate, $lte: periodEndDate },
+    })
+    .populate('client', 'name')
+    .sort({ date: 1 });
+
+    res.json({
+        openingCashBalance,
+        openingBankBalance,
+        entries,
+    });
+});
 const deleteTransaction = asyncHandler(async (req, res) => {
     const transaction = await Transaction.findById(req.params.id);
 
@@ -107,4 +142,5 @@ export {
     getTransactionById,
     updateTransaction,
     deleteTransaction,
+    getCashBookData,
 };

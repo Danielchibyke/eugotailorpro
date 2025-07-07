@@ -5,6 +5,7 @@
     background-color: var(--color-background-app);
     display: flex;
     flex-direction: column;
+    margin-top: 70px;
 }
 
 .financials-header {

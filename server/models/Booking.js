@@ -16,6 +16,9 @@ const bookingSchema = mongoose.Schema(
         deliveryDate: {
             type: Date,
         },
+        reminderDate: {
+            type: Date,
+        },
         status: { // e.g., 'Pending', 'Confirmed', 'Completed', 'Cancelled'
             type: String,
             required: true,

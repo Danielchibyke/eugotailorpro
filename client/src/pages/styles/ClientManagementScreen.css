@@ -1,17 +1,19 @@
+/* client/src/pages/styles/ClientManagementScreen.css */
+
+
 
 .client-management-container {
     padding-bottom: 20px; /* Space for bottom navbar */
     display: flex;
     flex-direction: column;
     align-items: center;
-   margin-top: 70px; /* Space for fixed header */
+    margin-top: 70px; /* Space for fixed header */
     margin-bottom: 70px; /* Space for bottom navbar */
     width: 100%;
     color: var(--color-background-app);
     font-family: var(--font-family);
- 
-
 }
+
 .search-bar-group {
     margin-bottom: var(--spacing-lg);
 }
@@ -25,7 +27,6 @@
     box-sizing: border-box; /* Include padding in width */
 }
 
-
 .client-management-container .detail-header {
     position: fixed;
     display: flex;
@@ -37,6 +38,7 @@
     color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
 .client-management-container .detail-header h1 {
     width: auto;
     margin: 0;
@@ -67,7 +69,7 @@
 }
 
 .client-management-content {
-    margin-top: 60px; 
+    margin-top: 60px;
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -79,89 +81,174 @@
 .client-list {
     margin-top: 20px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive grid */
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); /* Responsive grid */
+    gap: 20px; /* Increased gap */
     width: 100%;
-    max-width: 900px; /* Increased max width for client list */
+    max-width: 1000px; /* Increased max width for client list */
 }
 
 .client-card {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    padding: 20px;
+    background-color: var(--color-background-card);
+    border-radius: var( --border-radius-md); /* More rounded corners */
+    box-shadow: var(--box-shadow-md); /* Softer, larger shadow */
+    padding: var(--spacing-xl); /* Increased padding */
     display: flex;
-    flex-direction: column; 
-    gap: 12px;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    flex-direction: column;
+    gap: var(--spacing-md); /* Increased gap */
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    border: 1px solid var(--color-border-light); /* Subtle border */
 }
 
 .client-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transform: translateY(-8px); /* More pronounced lift effect */
+    box-shadow: var(--box-shadow-lg); /* Stronger shadow on hover */
 }
 
 .client-card h3 {
-    margin: 0 0 10px 0;
-    color: var(--color-primary);
-    font-size: 1.4em;
-    border-bottom: 2px solid var(--color-border);
-    padding-bottom: 8px;
+    margin: 0 0 var(--spacing-md) 0; /* Adjusted margin */
+    color: var(--color-primary); /* Darker primary for headings */
+    font-size: var(--font-size-h2); /* Larger font size */
+    border-bottom: 2px solid var(--color-primary-light); /* Accent border */
+    padding-bottom: var(--spacing-md); /* Increased padding */
 }
 
 .client-card p {
-    margin: 5px 0;
-    font-size: 1em;
-    color: var(--color-text-medium);
+    margin: var(--spacing-sm) 0; /* Adjusted margin */
+    font-size: var(--font-size-body); /* Slightly larger font */
+    color: var(--color-text-dark);
+    line-height: 1.5; /* Improved readability */
 }
 
 .client-card p strong {
-    color: var(--color-text-dark);
-    margin-right: 5px;
+    color: var(--color-accent);
+    margin-right: var(--spacing-sm); /* Increased margin */
+}
+
+.client-contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+}
+
+.client-measurement-summary {
+    background-color: var(--color-background-app);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-border);
+    margin-top: var(--spacing-md);
+}
+.btn-info{
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    padding: 8px 12px;
+    font-size: var(--font-size-small);
+    color: var(--color-text-medium);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease-in-out;
+    width: auto; /* Override default 100% width */
+
+}
+.client-measurement-summary h4 {
+    color: var(--color-primary);
+    font-size: var(--font-size-h3);
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border-light);
+    padding-bottom: var(--spacing-xs);
+}
+
+.measurement-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-sm);
 }
 
 .client-actions {
     display: flex;
-    gap: 10px;
+    gap: var(--spacing-md); /* Increased gap */
     justify-content: flex-end;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid var(--color-border);
+    margin-top: var(--spacing-lg); /* Increased margin */
+    padding-top: var(--spacing-lg); /* Increased padding */
+    border-top: 1px solid var(--color-border-light); /* Subtle border */
 }
 
 .client-actions .btn {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 5px;
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    padding: 8px 12px;
+    font-size: var(--font-size-small);
+    color: var(--color-text-medium);
     cursor: pointer;
-    font-size: 0.9em;
-    font-weight: bold;
-    transition: background-color 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease-in-out;
+    width: auto; /* Override default 100% width */
+
+}
+.detail-actions button{
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    padding: 8px 12px;
+    font-size: var(--font-size-small);
+    color: var(--color-text-medium);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease-in-out;
+    width: auto; /* Override default 100% width */
+
 }
 
-.client-actions .edit-client-btn {
-    background-color: var(--color-info);
-    color: white;
+.client-actions .btn:hover {
+    transform: translateY(-2px);
 }
 
-.client-actions .edit-client-btn:hover {
-    background-color: darken(var(--color-info), 10%);
+
+.btn-icon {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    padding: 8px 12px;
+    font-size: var(--font-size-small);
+    color: var(--color-text-medium);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease-in-out;
+    width: auto; /* Override default 100% width */
 }
 
-.client-actions .delete-client-btn {
-    background-color: var(--color-error);
-    color: white;
+.btn-icon:hover {
+    background-color: rgba(var(--color-primary), 0.05); /* Light hover effect */
+    color: var(--color-primary);
+    border-color: var(--color-primary);
 }
 
-.client-actions .delete-client-btn:hover {
-    background-color: darken(var(--color-error), 10%);
+.btn-icon-danger {
+    color: var(--color-error);
+    border-color: var(--color-error);
 }
 
+.btn-icon-danger:hover {
+    background-color: rgba(var(--color-error), 0.1);
+    color: var(--color-error);
+}
 .no-clients-message {
     text-align: center;
-    color: #777;
-    margin-top: 30px;
-    font-size: 1.1em;
+    color: var(--color-text-medium);
+    margin-top: var(--spacing-xl); /* Increased margin */
+    font-size: var(--font-size-h3); /* Larger font */
+    font-style: italic;
 }
 
 .client-form-overlay {
@@ -170,39 +257,46 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.75); /* Darker overlay */
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
     overflow-y: auto; /* Allow scrolling for long forms */
-    padding: 20px;
+    padding: var(--spacing-lg);
 }
 
 .client-form-popup {
     background-color: var(--color-background-card);
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    padding: var(--spacing-xl); /* Increased padding */
+    border-radius: var(--border-radius-lg); /* More rounded corners */
+    box-shadow: var(--box-shadow-lg); /* Stronger shadow */
     width: 95%;
-    max-width: 650px; /* Increased max-width for better form layout */
-    max-height: 90vh;
-    animation: fadeInScale 0.3s ease-out;
+    max-width: 750px; /* Increased max-width for better form layout */
+    max-height: 95vh; /* Increased max-height */
+    animation: fadeInScale 0.4s ease-out; /* Slightly slower animation */
     box-sizing: border-box;
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--spacing-xl); /* Increased gap */
     color: var(--color-text-dark);
     font-family: var(--font-family);
-    font-size: 1em;
+    font-size: var(--font-size-body); /* Slightly larger font */
     overflow-y: auto; /* Enable scrolling within the popup */
+}
+
+.measurement-summary-grid p{
+   background-color: rgba(135, 170, 223, 0.175);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+
 }
 
 @keyframes fadeInScale {
     from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: scale(0.9);
     }
     to {
         opacity: 1;
@@ -213,20 +307,25 @@
 .client-form-popup .form-heading {
     text-align: center;
     color: var(--color-primary);
-    margin-bottom: 25px;
-    font-size: 1.8em;
+    margin-bottom: var(--spacing-xl); /* Increased margin */
+    font-size: var(--font-size-h1); /* Larger font */
     font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1); /* Subtle text shadow */
 }
 
 .client-form-popup form {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Two columns for general fields */
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); /* Adjusted minmax for better two-column layout */
+    gap: var(--spacing-xl); /* Increased gap */
+    width: 100%;
+    box-sizing: border-box; /* Ensure padding is included in width */
+    margin-bottom: var(--spacing-xl); /* Increased margin for form */
+
 }
 
 .client-form-popup .form-row {
     display: flex;
-    gap: 20px;
+    gap: var(--spacing-lg);
     width: 100%;
 }
 
@@ -241,136 +340,160 @@
 
 .client-form-popup label {
     display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
+    margin-bottom: var(--spacing-sm); /* Increased margin */
+    font-weight: 600; /* Bolder label */
     color: var(--color-text-dark);
-    font-size: 0.95em;
+    font-size: var(--font-size-body);
 }
 
 .client-form-popup .form-control {
     width: 100%;
-    padding: 12px;
+    padding: var(--spacing-md); /* Increased padding */
     border: 1px solid var(--color-border);
-    border-radius: 5px;
-    font-size: 1em;
+    border-radius: var(--border-radius-md); /* More rounded inputs */
+    font-size: var(--font-size-body); /* Slightly larger font */
     box-sizing: border-box;
     background-color: var(--color-background-app);
     color: var(--color-text-dark);
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.client-form-popup .form-control:focus {
+    border-color: var(--color-primary); /* Highlight on focus */
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.2); /* Subtle glow */
+    outline: none;
 }
 
 .client-form-popup textarea.form-control {
-    min-height: 80px;
+    min-height: 80px; /* Increased min-height */
     resize: vertical;
+    flex: 1;
 }
 
 .client-form-popup #measurements {
     grid-column: 1 / -1; /* Span full width for measurements section */
     background-color: var(--color-background-app);
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid var(--color-border);
+    padding: var(--spacing-lg); /* Increased padding */
+    border-radius: var(--border-radius-md); /* More rounded corners */
+    border: 1px solid var(--color-border-light);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); /* Subtle inner shadow */
+    width: 100%;
 }
 
 .client-form-popup #measurements h4 {
     color: var(--color-primary);
-    margin-top: 15px;
-    margin-bottom: 10px;
+    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-h3);
 }
 
 .client-form-popup .measurement-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: var(--spacing-md); /* Increased gap */
+    margin-bottom: var(--spacing-md); /* Increased margin */
+    align-items: center;
+    
 }
 
 .client-form-popup .measurement-group {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--spacing-sm); /* Increased gap */
+    flex: 1; /* Allow measurement groups to grow */
+    padding: var(--spacing-sm); /* Increased padding */
 }
 
 .client-form-popup #measurements span {
-    font-weight: bold;
+    font-weight: 600; /* Bolder text */
     color: var(--color-accent);
-    margin-right: 5px;
+    margin-right: var(--spacing-xs);
     display: inline-block;
-    margin-top: 10px;
+    min-width: 30px; /* Ensure consistent alignment */
 }
 
 .client-form-popup #measurements input {
-    width: 80px; /* Smaller width for measurement inputs */
-    display: inline-block;
-    margin-right: 10px;
-    margin-bottom: 10px;
+    width: auto; /* Slightly larger width for measurement inputs */
+    padding: var(--spacing-sm); /* Increased padding */
+    border-radius: var(--border-radius-sm); /* More rounded inputs */
+    font-size: var(--font-size-body);
+    border: 1px solid var(--color-border);
 }
 
 .client-form-popup #top, .client-form-popup #down {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: var(--spacing-md); /* Increased gap */
     align-items: center;
-    margin-top: 10px;
-    padding: 10px;
-    border: 1px dashed var(--color-border);
-    border-radius: 5px;
+    margin-top: var(--spacing-md); /* Increased margin */
+    padding: var(--spacing-md); /* Increased padding */
+    border: 1px dashed var(--color-primary-light); /* More prominent dashed border */
+    border-radius: var(--border-radius-md);
 }
 
 .client-form-popup .form-actions {
     grid-column: 1 / -1; /* Span full width for action buttons */
     display: flex;
-    justify-content: flex-end;
-    gap: 15px;
-    margin-top: 25px;
+    justify-content: space-between;
+    align-items: center;
+    flex-direction: column;
+    gap: var(--spacing-lg); /* Increased gap */
+    margin-top: var(--spacing-xl); /* Increased margin */
 }
 
 .client-form-popup .save-button {
     background-color: var(--color-success);
     color: white;
-    padding: 12px 25px;
+    padding: var(--spacing-md) var(--spacing-xl); /* Larger buttons */
     border: none;
-    border-radius: 5px;
+    border-radius: var(--border-radius-md); /* More rounded buttons */
     cursor: pointer;
-    font-size: 1.1em;
+    font-size: var(--font-size-h3);
     font-weight: bold;
+    height: 80px;
 }
 
 .client-form-popup .save-button:hover {
-    background-color: darken(var(--color-success), 10%);
+    background-color: rgba(0, 128, 0, 0.344);
+    transform: translateY(-2px);
 }
 
 .client-form-popup .cancel-button {
-    background-color: var(--color-secondary);
+    background-color: var(--color-primary);
     color: white;
-    padding: 12px 25px;
+    padding: var(--spacing-md) var(--spacing-xl); /* Larger buttons */
     border: none;
-    border-radius: 5px;
+    border-radius: var(--border-radius-md); /* More rounded buttons */
     cursor: pointer;
-    font-size: 1.1em;
+    font-size: var(--font-size-h3);
     font-weight: bold;
+    height: 80px;
 }
 
 .client-form-popup .cancel-button:hover {
-    background-color: darken(var(--color-secondary), 10%);
+    background-color: rgba(3, 3, 52, 0.467);
+    transform: translateY(-2px);
 }
 
 /* Styles for the new client detail card */
 .client-detail-card {
     background-color: var(--color-background-card);
-    padding: var(--spacing-lg);
-    border-radius: var(--border-radius-md);
-    box-shadow: var(--box-shadow-md);
+    padding: var(--spacing-xl); /* Increased padding */
+    border-radius: var(--border-radius-lg); /* More rounded corners */
+    box-shadow: var(--box-shadow-lg); /* Stronger shadow */
     width: 100%;
-    max-width: 700px; /* Adjusted max-width for detail card */
+    max-width: 800px; /* Adjusted max-width for detail card */
     margin-top: var(--spacing-xl);
     margin-bottom: var(--spacing-xl);
+    border: 1px solid var(--color-border-light); /* Subtle border */
 }
 
 .client-detail-card h2 {
-    color: var(--color-primary);
-    font-size: var(--font-size-h2);
-    margin-bottom: var(--spacing-lg);
+    color: var(--color-primary-dark);
+    font-size: var(--font-size-h1); /* Larger font */
+    margin-bottom: var(--spacing-xl);
     text-align: center;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
 }
 
 .client-detail-card .back-button {
@@ -386,52 +509,58 @@
 
 .client-detail-card .detail-section {
     background-color: var(--color-background-app);
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-lg); /* Increased padding */
+    border-radius: var(--border-radius-md); /* More rounded corners */
+    margin-bottom: var(--spacing-xl); /* Increased margin */
     border: 1px solid var(--color-border);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); /* Subtle inner shadow */
 }
 
 .client-detail-card .detail-section h3 {
     color: var(--color-accent);
-    font-size: var(--font-size-h3);
+    font-size: var(--font-size-h2); /* Larger font */
     margin-top: 0;
-    margin-bottom: var(--spacing-md);
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg); /* Increased margin */
+    border-bottom: 2px solid var(--color-accent-light); /* Accent border */
+    padding-bottom: var(--spacing-md); /* Increased padding */
 }
 
 .client-detail-card .detail-section h4 {
     color: var(--color-primary);
-    font-size: var(--font-size-body);
-    margin-top: var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-h3);
+    margin-top: var(--spacing-lg); /* Increased margin */
+    margin-bottom: var(--spacing-md); /* Increased margin */
 }
 
 .client-detail-card .detail-section p {
     font-size: var(--font-size-body);
     color: var(--color-text-medium);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
 }
 
 .client-detail-card .detail-section p strong {
     color: var(--color-text-dark);
-    margin-right: var(--spacing-xs);
+    margin-right: var(--spacing-sm);
 }
 
 .client-detail-card .detail-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: var(--spacing-lg);
+    gap: var(--spacing-md); /* Increased gap */
+    margin-top: var(--spacing-xl); /* Increased margin */
 }
 
 .client-detail-card .detail-actions .btn {
-    padding: var(--spacing-sm) var(--spacing-md);
-    font-size: var(--font-size-body);
+    padding: var(--spacing-md) var(--spacing-xl); /* Larger buttons */
+    font-size: var(--font-size-h3);
     font-weight: bold;
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius-md); /* More rounded buttons */
     cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
+    transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.client-detail-card .detail-actions .btn:hover {
+    transform: translateY(-2px);
 }
 
 .client-detail-card .detail-actions .btn-info {
@@ -441,7 +570,7 @@
 }
 
 .client-detail-card .detail-actions .btn-info:hover {
-    background-color: darken(var(--color-info), 10%);
+    background-color: darken(var(--color-info), 15%);
 }
 
 /* Responsive adjustments for the detail card */

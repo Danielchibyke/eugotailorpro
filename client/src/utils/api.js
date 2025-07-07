@@ -31,7 +31,7 @@ api.interceptors.response.use(
             // Handle unauthorized errors (e.g., token expired)
             console.error('Unauthorized request. Logging out...');
             localStorage.removeItem('userInfo'); // Clear user info
-            window.location.href = '/login'; // Redirect to login page
+         
         }
         return Promise.reject(error);
     }

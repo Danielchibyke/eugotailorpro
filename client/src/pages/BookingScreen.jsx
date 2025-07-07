@@ -1,5 +1,6 @@
 import React from "react";
 import { useState, useEffect, useMemo } from "react";
+import { useNotification } from "../context/NotificationContext";
 import "../App.css";
 import "./styles/BookingScreen.css";
 import BookingCard from "../components/BookingCard";
@@ -12,26 +13,28 @@ import { useNavigate, useParams } from "react-router-dom";
 
 export default function BookingScreen() {
     // Use the BookingContext to manage bookings
-    const { bookings, setBookings, loading, setLoading, error, setError } = useBookings();  
+    const { bookings, setBookings, loading, setLoading } = useBookings();  
   const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams(); // Get booking ID from URL
+  const { showNotification } = useNotification();
  
   const [showCreateBooking, setShowCreateBooking] = useState(false);
   const [showBookingDetails, setShowBookingDetails] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [successMessage, setSuccessMessage] = useState(null);
+  
   const [formData, setFormData] = useState({
     client: "",
     bookingDate: "",
     deliveryDate: "", // New field
+    reminderDate: "", // New field for reminder
     status: "Pending",
     notes: "",
     bookedBy: user ? user._id : "", // Replace with actual user ID if available
     design: "", // URL for the design image
-    price: "",
-    payment: "",
+    price: Number(""),
+    payment: Number(""),
   });
   const [currentBooking, setCurrentBooking] = useState(null);
 
@@ -95,7 +98,7 @@ export default function BookingScreen() {
           setClients([]);
         }
       } catch (err) {
-        setError(err.message || "An error occurred while fetching clients");
+        showNotification(err.message || "An error occurred while fetching clients", "error");
         console.error("Error fetching clients:", err);
       }
     };
@@ -106,10 +109,10 @@ export default function BookingScreen() {
         if (data) {
           handleEditBooking(data);
         } else {
-          setError("Booking not found");
+          showNotification("Booking not found", "error");
         }
       } catch (err) {
-        setError(err.message || "An error occurred while fetching the booking");
+        showNotification(err.message || "An error occurred while fetching the booking", "error");
       }
     };
 
@@ -121,18 +124,7 @@ export default function BookingScreen() {
     }
   }, [id]);
 
-  // Sample test data
-  const testData = [
-    {
-      _id: '1',
-      client: { name: 'John Doe' },
-      bookingDate: '2023-10-01',
-      status: 'Pending',
-      notes: 'Initial consultation',
-      bookedBy: { name: 'Test User' },
-      design: 'https://example.com/design.jpg',
-    },
-  ];
+  
 
   
 
@@ -140,17 +132,17 @@ export default function BookingScreen() {
   // If the API call fails, use the test data
   const fetchBookings = async () => {
     setLoading(true);
-    setError(null);
+    // setError(null); // Replaced with showNotification
 
     try {
       const { data } = await api.get("/bookings");
       if (data) {
         setBookings(data);
       } else {
-        setBookings(testData);
+        setBookings([]);
       }
     } catch (err) {
-      setError(err.message || "An error occurred while fetching bookings");
+      showNotification(err.message || "An error occurred while fetching bookings", "error");
       console.error("Error fetching bookings:", err);
     } finally {
       setLoading(false);
@@ -181,6 +173,7 @@ export default function BookingScreen() {
       client: booking.client ? booking.client._id : "", // Ensure client ID is set
       bookingDate: new Date(booking.bookingDate).toISOString().split("T")[0], // Format date to YYYY-MM-DD
       deliveryDate: booking.deliveryDate ? new Date(booking.deliveryDate).toISOString().split("T")[0] : "", // Format date to YYYY-MM-DD
+      reminderDate: booking.reminderDate ? new Date(booking.reminderDate).toISOString().split("T")[0] : "", // Format date to YYYY-MM-DD
       status: booking.status,
       notes: booking.notes,
       bookedBy: booking.bookedBy ? booking.bookedBy._id : user ? user._id : "",
@@ -196,9 +189,9 @@ export default function BookingScreen() {
     try {
       const { data } = await api.put(`/bookings/${bookingId._id}`, { status: 'Completed' });
       setBookings(bookings.map(b => (b._id === bookingId ? data : b)));
-      setSuccessMessage("Booking marked as completed!");
+      showNotification("Booking marked as completed!", "success");
     } catch (err) {
-      setError("Failed to update booking status.");
+      showNotification("Failed to update booking status.", "error");
     }
   };
 
@@ -209,14 +202,15 @@ export default function BookingScreen() {
         const response = await api.delete(`/bookings/${bookingId}`);
         if (response.status === 200) {
           setBookings(bookings.filter((booking) => booking._id !== bookingId));
-          setSuccessMessage("Booking deleted successfully!");
+          showNotification("Booking deleted successfully!", "success");
           setShowBookingDetails(false); // Close booking details if open
           setSelectedBooking(null); // Reset selected booking
+          navigate('/bookings'); // Navigate back to the general bookings list after deletion
         } else {
           throw new Error("Failed to delete booking");
         }
       } catch (err) {
-        setError(err.message || "An error occurred while deleting the booking");
+        showNotification(err.message || "An error occurred while deleting the booking", "error");
       }
     }
   };
@@ -229,25 +223,27 @@ export default function BookingScreen() {
       client: "", // Reset form data
       bookingDate: new Date().toISOString().split("T")[0], // Set to today's date
       deliveryDate: "", // New field
+      reminderDate: "", // New field for reminder
       status: "Pending",
       notes: "",
       bookedBy: user ? user._id : "", // Replace with actual user ID if available
       design: "", // URL for the design image
-      price: "",
-      payment: "",
+      price: Number(""),
+      payment: Number(""),
     });
   };
 
   // Handle form submission for creating or updating bookings
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSuccessMessage(null);
+    // setError(null); // Replaced with showNotification
+    // setSuccessMessage(null); // Replaced with showNotification
     try {
       const bookingData = {
         client: formData.client,
         bookingDate: formData.bookingDate,
         deliveryDate: formData.deliveryDate, // Include deliveryDate
+        reminderDate: formData.reminderDate, // Include reminderDate
         status: formData.status,
         notes: formData.notes,
         bookedBy: formData.bookedBy,
@@ -263,18 +259,20 @@ export default function BookingScreen() {
           `/bookings/${currentBooking._id}`,
           bookingData
         );
-        setSuccessMessage("Booking updated successfully!");
+        showNotification("Booking updated successfully!", "success");
+        navigate('/bookings'); // Navigate back to the general bookings list
       } else {
         // Create new booking
         response = await api.post("/bookings", bookingData);
-        setSuccessMessage("Booking created successfully!");
+        showNotification("Booking created successfully!", "success");
+        navigate('/bookings'); // Navigate back to the general bookings list after creation
       }
 
       // Refresh bookings list after successful operation
       const { data } = await api.get("/bookings");
       setBookings(data || []); // Ensure bookings is set to an array
     } catch (err) {
-      setError(err.message || "An error occurred while saving the booking");
+      showNotification(err.message || "An error occurred while saving the booking", "error");
     } finally {
       setIsFormVisible(false);
     }
@@ -288,13 +286,14 @@ export default function BookingScreen() {
       client: "",
       bookingDate: "",
       deliveryDate: "", // New field
+      reminderDate: "", // New field for reminder
       status: "Pending",
       notes: "",
       bookedBy: user ? user._id : "", // Replace with actual user ID if available
       design: "", // URL for the design image
     });
-    setSuccessMessage(null);
-    setError(null);
+    // setSuccessMessage(null); // Replaced with showNotification
+    // setError(null); // Replaced with showNotification
   };
 
 
@@ -307,11 +306,11 @@ export default function BookingScreen() {
 
   // Main booking management screen
   if (loading) {
-    return <p className="alert">Loading bookings...</p>;
-  }
-  if (error) {
-    return <p className="alert alert-error">{error}</p>;
-  }
+    return <div className="loading-container">
+        <div className="spinner"></div>
+        Loading Clients...
+        </div>;
+}
 
   // Render the booking management screen with bookings list
   if (!user || !user.role === "admin") {
@@ -336,11 +335,7 @@ export default function BookingScreen() {
         </button>
       </header>
 
-      {successMessage ? (
-        <p className="alert alert-success">{successMessage}</p>
-      ) : (
-        ""
-      )}
+      
 
       <div className="bookings-list">
         {bookings.length > 0 ? (
@@ -456,6 +451,16 @@ handleSearchInputChange, searchQuery,  clients, handleEditBooking, handleDeleteB
                     id="deliveryDate"
                     name="deliveryDate"
                     value={formData.deliveryDate}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="reminderDate">Reminder Date</label>
+                  <input
+                    type="date"
+                    id="reminderDate"
+                    name="reminderDate"
+                    value={formData.reminderDate}
                     onChange={handleInputChange}
                   />
                 </div>

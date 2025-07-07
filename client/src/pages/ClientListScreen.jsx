@@ -1,40 +1,38 @@
 // client/src/pages/ClientListScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNavbar from '../components/BottomNavbar';
 import '../App.css'; // For general app structure
 import './styles/ClientListScreen.css'; // Specific styles for this screen
 import { FiPlus, FiEdit } from 'react-icons/fi'; // Icons for Add and Edit
 import api from '../utils/api'; 
+import { useNotification } from '../context/NotificationContext'; 
 
 const ClientListScreen = () => {
     const navigate = useNavigate();
+    const { showNotification } = useNotification();
     // Placeholder client data
     const [clients, setClients] = useState([ ]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
 
     useEffect(() => {
-        // In a real application, you would fetch clients from your backend here
-        // For now, we use the static placeholder data
         fetchClients();
-    }, []);
+    }, [fetchClients]);
 
-    const fetchClients = async () => {
+    const fetchClients = useCallback(async () => {
         setLoading(true);
-        setError('');
+        // setError(''); // Replaced with showNotification
         try {
             const { data } = await api.get('/clients');
             setClients(data);
         } catch (err) {
-            setError(err.response?.data?.msg || 'Failed to fetch clients.');
+            showNotification(err.response?.data?.msg || 'Failed to fetch clients.', 'error');
             console.error(err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [showNotification]);
 
     const filteredClients = clients.filter(client =>
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -50,9 +48,19 @@ const ClientListScreen = () => {
         navigate(`/clients/${clientId}/edit`);
     };
 
+    if (loading) {
+        return <div className="loading-spinner">
+            <div className="spinner"></div>
+            Loading Clients...
+            </div>;
+    }
+
     return (
         <div className="client-list-container">
             <header className="client-list-header">
+                <button onClick={() => navigate(-1)} className="back-button">
+                    &larr; Back
+                </button>
                 <h1 className="client-list-heading">Clients</h1>
                 <button onClick={handleAddClient} className="btn btn-primary add-client-btn">
                     <FiPlus /> Add Client
