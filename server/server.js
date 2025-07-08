@@ -21,7 +21,7 @@ const app = express();
 // middlewares
 app.use(cors(
   {
-    origin: process.env.CORS_ORIGIN || ['http://localhost:5173',  'exp://172.20.10.3:8081', 'http://localhost:8081'],// Adjust this to your frontend URL
+    origin: process.env.CORS_ORIGIN || ['http://localhost:5173',  'exp://172.20.10.3:8081', 'http://localhost:8081', 'http://localhost:8082', '*'],// Adjust this to your frontend URL
     
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
     allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers

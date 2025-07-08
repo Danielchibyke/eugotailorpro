@@ -29,14 +29,14 @@ const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
             </View>
             <View style={styles.actions}>
                 <TouchableOpacity onPress={() => onEdit(booking)} style={styles.actionButton}>
-                    <Ionicons name="ios-create-outline" size={24} color={theme.COLORS.primary} />
+                    <Ionicons name="create-outline" size={24} color={theme.COLORS.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => onDelete(booking._id)} style={styles.actionButton}>
-                    <Ionicons name="ios-trash-outline" size={24} color={theme.COLORS.error} />
+                    <Ionicons name="trash-outline" size={24} color={theme.COLORS.error} />
                 </TouchableOpacity>
                 {booking.status === 'Pending' && (
                     <TouchableOpacity onPress={() => onComplete(booking)} style={styles.actionButton}>
-                        <Ionicons name="ios-checkmark-circle-outline" size={24} color={theme.COLORS.success} />
+                        <Ionicons name="checkmark-circle-outline" size={24} color={theme.COLORS.success} />
                     </TouchableOpacity>
                 )}
             </View>

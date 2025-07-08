@@ -74,7 +74,7 @@ const ClientsScreen = ({ navigation }) => {
             <View style={styles.header}>
                 <Text style={styles.heading}>Clients</Text>
                 <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddClient')}>
-                    <Ionicons name="ios-add" size={24} color="#fff" />
+                    <Ionicons name="add" size={24} color="#fff" />
                     <Text style={styles.addButtonText}>Add Client</Text>
                 </TouchableOpacity>
             </View>

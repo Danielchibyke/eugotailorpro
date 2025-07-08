@@ -12,10 +12,10 @@ const ClientCard = ({ client, onView, onEdit, onDelete }) => (
         </View>
         <View style={styles.actions}>
             <TouchableOpacity onPress={() => onEdit(client)} style={styles.actionButton}>
-                <Ionicons name="ios-create-outline" size={24} color={theme.COLORS.primary} />
+                <Ionicons name="create-outline" size={24} color={theme.COLORS.primary} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => onDelete(client._id)} style={styles.actionButton}>
-                <Ionicons name="ios-trash-outline" size={24} color={theme.COLORS.error} />
+                <Ionicons name="trash-outline" size={24} color={theme.COLORS.error} />
             </TouchableOpacity>
         </View>
     </TouchableOpacity>

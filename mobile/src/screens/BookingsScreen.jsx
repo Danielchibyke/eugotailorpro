@@ -70,7 +70,7 @@ const BookingsScreen = ({ navigation }) => {
             <View style={styles.header}>
                 <Text style={styles.heading}>Bookings</Text>
                 <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddBooking')}>
-                    <Ionicons name="ios-add" size={24} color="#fff" />
+                    <Ionicons name="add" size={24} color="#fff" />
                     <Text style={styles.addButtonText}>Add Booking</Text>
                 </TouchableOpacity>
             </View>

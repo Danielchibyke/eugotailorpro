@@ -104,23 +104,23 @@ const DashboardScreen = ({ navigation }) => {
                     <StatCard icon="ios-briefcase" label="Total Bookings" value={bookings.length} color="#4a90e2" />
                     <StatCard icon="ios-time" label="Pending" value={pendingBookings.length} color="#f5a623" />
                     <StatCard icon="ios-people" label="Total Clients" value={clients.length} color="#bd10e0" />
-                    <StatCard icon="ios-cash" label="Revenue" value="₦0" color="#7ed321" />
+                    <StatCard icon="cash" label="Revenue" value="₦0" color="#7ed321" />
                 </View>
 
                 <View style={styles.quickActions}>
                     <Text style={styles.sectionTitle}>Quick Actions</Text>
                     <View style={styles.actionButtonsContainer}>
                         <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AddBooking')}>
-                            <Ionicons name="ios-add-circle-outline" size={24} color={theme.COLORS.primary} />
+                            <Ionicons name="add-circle-outline" size={24} color={theme.COLORS.primary} />
                             <Text style={styles.actionButtonText}>New Booking</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AddClient')}>
-                            <Ionicons name="ios-person-add-outline" size={24} color={theme.COLORS.primary} />
+                            <Ionicons name="person-add-outline" size={24} color={theme.COLORS.primary} />
                             <Text style={styles.actionButtonText}>New Client</Text>
                         </TouchableOpacity>
                         {user && user.role === 'admin' && (
                             <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Register')}>
-                                <Ionicons name="ios-person-add-outline" size={24} color={theme.COLORS.primary} />
+                                <Ionicons name="person-add-outline" size={24} color={theme.COLORS.primary} />
                                 <Text style={styles.actionButtonText}>Register User</Text>
                             </TouchableOpacity>
                         )}

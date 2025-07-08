@@ -1,17 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import api from '../utils/api';
 
-// Polyfill for SecureStore methods if they don't exist (for older SDKs)
-if (!SecureStore.getItemAsync) {
-  SecureStore.getItemAsync = async (key) => SecureStore.getItem(key);
-}
-if (!SecureStore.setItemAsync) {
-  SecureStore.setItemAsync = async (key, value) => SecureStore.setItem(key, value);
-}
-if (!SecureStore.deleteItemAsync) {
-  SecureStore.deleteItemAsync = async (key) => SecureStore.deleteItem(key);
-}
+let authToken = null;
+let currentUser = null;
 
 const AuthContext = createContext();
 
@@ -20,18 +11,12 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const loadUser = async () => {
-            const token = await SecureStore.getItemAsync('token');
-            if (token) {
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                const userJSON = await SecureStore.getItemAsync('user');
-                if (userJSON) {
-                    setUser(JSON.parse(userJSON));
-                }
-            }
-            setLoading(false);
-        };
-        loadUser();
+        // In a real app, you'd load from AsyncStorage or similar here
+        if (currentUser) {
+            setUser(currentUser);
+            api.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+        }
+        setLoading(false);
     }, []);
 
     const login = async (email, password) => {
@@ -44,14 +29,9 @@ export const AuthProvider = ({ children }) => {
             console.log('Token extracted:', token);
             console.log('User data extracted:', userData);
 
-            // Temporarily disable SecureStore to isolate the issue
-            console.log('Attempting to store token in SecureStore...');
-            await SecureStore.setItemAsync('token', token);
-            console.log('Token stored successfully.');
-
-            console.log('Attempting to store user data in SecureStore...');
-            await SecureStore.setItemAsync('user', JSON.stringify(userData));
-            console.log('User data stored successfully.');
+            // Store in memory (non-persistent)
+            authToken = token;
+            currentUser = userData;
 
             console.log('Setting authorization header...');
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -64,7 +44,6 @@ export const AuthProvider = ({ children }) => {
             return data;
         } catch (error) {
             console.error('Error in login function:', error);
-            // Re-throw the error to be caught by the calling component
             throw error;
         }
     };
@@ -72,16 +51,19 @@ export const AuthProvider = ({ children }) => {
     const register = async (name, email, password) => {
         const { data } = await api.post('/auth/register', { name, email, password });
         const { token, ...userData } = data;
-        await SecureStore.setItemAsync('token', token);
-        await SecureStore.setItemAsync('user', JSON.stringify(userData));
+        
+        // Store in memory (non-persistent)
+        authToken = token;
+        currentUser = userData;
+
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser(userData);
         return data;
     };
 
-    const logout = async () => {
-        await SecureStore.deleteItemAsync('token');
-        await SecureStore.deleteItemAsync('user');
+    const logout = () => {
+        authToken = null;
+        currentUser = null;
         delete api.defaults.headers.common['Authorization'];
         setUser(null);
     };

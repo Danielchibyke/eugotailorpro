@@ -98,8 +98,8 @@ const CashBookScreen = () => {
                                 debitBank: '',
                                 particularsCredit: transaction.description,
                                 voucherNoCredit: transaction.voucherNo || '',
-                                creditCash: transaction.paymentMethod === 'Cash' ? transaction.amount : '',
-                                creditBank: transaction.paymentMethod === 'Bank' ? transaction.amount : '',
+                                creditCash: '',
+                                creditBank: '',
                                 isBalancedPeriod: true,
                             });
                         }
@@ -202,8 +202,8 @@ const CashBookScreen = () => {
                             debitBank: '',
                             particularsCredit: transaction.description,
                             voucherNoCredit: transaction.voucherNo || '',
-                            creditCash: transaction.paymentMethod === 'Cash' ? transaction.amount : '',
-                            creditBank: transaction.paymentMethod === 'Bank' ? transaction.amount : '',
+                            creditCash: '',
+                            creditBank: '',
                             isBalancedPeriod: false,
                         });
                     }
@@ -382,7 +382,7 @@ const CashBookScreen = () => {
                             <Text style={[styles.tableHeaderCell, styles.particularsHeader]}>Particulars (Debit)</Text>
                             <Text style={[styles.tableHeaderCell, styles.voucherHeader]}>Voucher No.</Text>
                             <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Cash (NGN)</Text>
-                            <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Bank (NGN)</Text>
+                            <Text style={[styles.tableHeaderCell, styles.amountHeader, styles.debitCreditDivider]}>Bank (NGN)</Text>
                             <Text style={[styles.tableHeaderCell, styles.particularsHeader]}>Particulars (Credit)</Text>
                             <Text style={[styles.tableHeaderCell, styles.voucherHeader]}>Voucher No.</Text>
                             <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Cash (NGN)</Text>
@@ -407,7 +407,7 @@ const CashBookScreen = () => {
                                         <Text style={[styles.tableCell, styles.particularsCell]}>{row.particularsDebit}</Text>
                                         <Text style={[styles.tableCell, styles.voucherCell]}>{row.voucherNoDebit}</Text>
                                         <Text style={[styles.tableCell, styles.amountCell]}>{row.debitCash !== '' && row.debitCash !== undefined ? row.debitCash.toFixed(2) : ''}</Text>
-                                        <Text style={[styles.tableCell, styles.amountCell]}>{row.debitBank !== '' && row.debitBank !== undefined ? row.debitBank.toFixed(2) : ''}</Text>
+                                        <Text style={[styles.tableCell, styles.amountCell, styles.debitCreditDivider]}>{row.debitBank !== '' && row.debitBank !== undefined ? row.debitBank.toFixed(2) : ''}</Text>
                                         <Text style={[styles.tableCell, styles.particularsCell]}>{row.particularsCredit}</Text>
                                         <Text style={[styles.tableCell, styles.voucherCell]}>{row.voucherNoCredit}</Text>
                                         <Text style={[styles.tableCell, styles.amountCell]}>{row.creditCash !== '' && row.creditCash !== undefined ? row.creditCash.toFixed(2) : ''}</Text>
@@ -519,6 +519,10 @@ const styles = StyleSheet.create({
     },
     balancedPeriodRow: {
         backgroundColor: '#e0ffe0',
+    },
+    debitCreditDivider: {
+        borderRightWidth: 2,
+        borderRightColor: '#000',
     },
 });
 
