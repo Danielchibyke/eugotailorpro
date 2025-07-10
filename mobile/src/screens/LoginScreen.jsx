@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { theme } from '../styles/theme';
+import BackgroundContainer from '../components/BackgroundContainer';
 
 const LoginScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -10,10 +11,6 @@ const LoginScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
     const { showNotification } = useNotification();
-
-
-
-    // Function to handle login
 
     const handleLogin = async () => {
         console.log('handleLogin triggered');
@@ -40,56 +37,44 @@ const LoginScreen = ({ navigation }) => {
     
 
     return (
-        <ImageBackground source={require('../../assets/bg.jpg')} style={styles.background}>
-            <View style={styles.overlay}>
-                <View style={styles.container}>
-                    <Text style={styles.title}>Login</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email"
-                        placeholderTextColor={theme.COLORS.textDark}
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        textContentType="emailAddress"
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Password"
-                        placeholderTextColor={theme.COLORS.textDark}
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
-                    <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-                        {loading ? (
-                            <ActivityIndicator color={theme.COLORS.primary} />
-                        ) : (
-                            <Text style={styles.buttonText}>Login</Text>
-                        )}
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                        <Text style={styles.linkText}>Don't have an account? Register</Text>
-                    </TouchableOpacity>
-                </View>
+        <BackgroundContainer>
+            <View style={styles.container}>
+                <Text style={styles.title}>Login</Text>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholderTextColor={theme.COLORS.textDark}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                />
+                <Text style={styles.inputLabel}>Password</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholderTextColor={theme.COLORS.textDark}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                />
+                <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+                    {loading ? (
+                        <ActivityIndicator color={theme.COLORS.primary} />
+                    ) : (
+                        <Text style={styles.buttonText}>Login</Text>
+                    )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                    <Text style={styles.linkText}>Don't have an account? Register</Text>
+                </TouchableOpacity>
             </View>
-        </ImageBackground>
+        </BackgroundContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    background: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    overlay: {
-        flex: 1,
-        backgroundColor: theme.COLORS.primaryLight,
-        justifyContent: 'center',
-        padding: theme.SPACING.md,
-    },
     container: {
         backgroundColor: theme.COLORS.primary,
         padding: theme.SPACING.lg,
@@ -110,6 +95,13 @@ const styles = StyleSheet.create({
         marginBottom: theme.SPACING.md,
         color: theme.COLORS.textDark,
     },
+    inputLabel: {
+        alignSelf: 'flex-start',
+        color: theme.COLORS.textLight,
+        fontSize: theme.FONT_SIZES.body,
+        marginBottom: theme.SPACING.xs,
+        marginLeft: theme.SPACING.xs,
+    },
     button: {
         width: '100%',
         backgroundColor: theme.COLORS.darkPrimary,
@@ -118,6 +110,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         height: 45,
+        marginBottom: theme.SPACING.md, // Adjusted margin for consistency
     },
     buttonText: {
         color: theme.COLORS.primary,

@@ -1,13 +1,18 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Platform, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '../context/NotificationContext';
 import api from '../utils/api';
 import theme from '../styles/theme';
+import DateTimePicker from 'react-native-ui-datepicker';
+import dayjs from 'dayjs';
+
+
+import BackgroundContainer from '../components/BackgroundContainer';
 
 const CashBookScreen = () => {
-    const navigation = useNavigation();
+  
     const { showNotification } = useNotification();
     const [fullCashBookRows, setFullCashBookRows] = useState([]);
     const [filteredCashBookRows, setFilteredCashBookRows] = useState([]);
@@ -16,6 +21,12 @@ const CashBookScreen = () => {
     const [finalClosingBalance, setFinalClosingBalance] = useState(null);
     const [filterStartDate, setFilterStartDate] = useState('');
     const [filterEndDate, setFilterEndDate] = useState('');
+    const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
+    const [isEndDatePickerVisible, setEndDatePickerVisible] = useState(false);
+    const navigation = useNavigation();
+  
+    
+   
 
     const fetchFullCashBook = useCallback(async () => {
         setLoading(true);
@@ -246,8 +257,11 @@ const CashBookScreen = () => {
     }, [showNotification]);
 
     useEffect(() => {
-        fetchFullCashBook();
-    }, [fetchFullCashBook]);
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchFullCashBook();
+        });
+        return unsubscribe;
+    }, [navigation, fetchFullCashBook]);
 
     useEffect(() => {
         if (fullCashBookRows.length === 0) {
@@ -363,63 +377,201 @@ const CashBookScreen = () => {
     }
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Full Cashbook Ledger</Text>
-                {lastBalancedDate && (
-                    <Text style={styles.lastBalancedInfo}>Last Balanced: {new Date(lastBalancedDate).toLocaleDateString()}</Text>
-                )}
+        <BackgroundContainer>
+            <View style={styles.headerContainer}>
+                <Text style={styles.headerTitle}>Cashbook</Text>
+                <View style={styles.headerInfo}>
+                    <Text style={styles.infoText}>Last Balanced: {lastBalancedDate ? new Date(lastBalancedDate).toLocaleDateString() : 'N/A'}</Text>
+                    {finalClosingBalance && (
+                        <Text style={styles.balanceText}>
+                            Final Balance: {finalClosingBalance.cash.toFixed(2)} (Cash), {finalClosingBalance.bank.toFixed(2)} (Bank)
+                        </Text>
+                    )}
+                </View>
                 <TouchableOpacity style={styles.balanceButton} onPress={handleBalanceCashBook}>
-                    <Text style={styles.balanceButtonText}>Balance Cashbook Up to Today</Text>
+                    <Text style={styles.balanceButtonText}>Balance Now</Text>
                 </TouchableOpacity>
             </View>
 
-            <ScrollView horizontal>
-                <ScrollView>
-                    <View>
-                        <View style={styles.tableHeader}>
-                            <Text style={[styles.tableHeaderCell, styles.dateHeader]}>Date</Text>
-                            <Text style={[styles.tableHeaderCell, styles.particularsHeader]}>Particulars (Debit)</Text>
-                            <Text style={[styles.tableHeaderCell, styles.voucherHeader]}>Voucher No.</Text>
-                            <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Cash (NGN)</Text>
-                            <Text style={[styles.tableHeaderCell, styles.amountHeader, styles.debitCreditDivider]}>Bank (NGN)</Text>
-                            <Text style={[styles.tableHeaderCell, styles.particularsHeader]}>Particulars (Credit)</Text>
-                            <Text style={[styles.tableHeaderCell, styles.voucherHeader]}>Voucher No.</Text>
-                            <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Cash (NGN)</Text>
-                            <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Bank (NGN)</Text>
-                        </View>
-                        <ScrollView>
-                            {filteredCashBookRows.map((row, index) => {
-                                let rowStyle = styles.tableRow;
-                                if (row.type === 'balanceBd' || row.type === 'balanceCd') {
-                                    rowStyle = [rowStyle, styles.balanceRow];
-                                }
-                                if (row.type === 'totals') {
-                                    rowStyle = [rowStyle, styles.totalsRow];
-                                }
-                                if (row.isBalancedPeriod) {
-                                    rowStyle = [rowStyle, styles.balancedPeriodRow];
-                                }
+            <View style={styles.filterContainer}>
+                <TouchableOpacity
+                    onPress={() => setStartDatePickerVisible(true)}
+                    style={styles.dateInputButton}
+                >
+                    <Text style={styles.dateInputText}>{filterStartDate ? dayjs(filterStartDate).format('YYYY-MM-DD') : 'Start Date'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => setEndDatePickerVisible(true)}
+                    style={styles.dateInputButton}
+                >
+                    <Text style={styles.dateInputText}>{filterEndDate ? dayjs(filterEndDate).format('YYYY-MM-DD') : 'End Date'}</Text>
+                </TouchableOpacity>
+            </View>
 
-                                return (
-                                    <View key={index} style={rowStyle}>
-                                        <Text style={[styles.tableCell, styles.dateCell]}>{row.date}</Text>
-                                        <Text style={[styles.tableCell, styles.particularsCell]}>{row.particularsDebit}</Text>
-                                        <Text style={[styles.tableCell, styles.voucherCell]}>{row.voucherNoDebit}</Text>
-                                        <Text style={[styles.tableCell, styles.amountCell]}>{row.debitCash !== '' && row.debitCash !== undefined ? row.debitCash.toFixed(2) : ''}</Text>
-                                        <Text style={[styles.tableCell, styles.amountCell, styles.debitCreditDivider]}>{row.debitBank !== '' && row.debitBank !== undefined ? row.debitBank.toFixed(2) : ''}</Text>
-                                        <Text style={[styles.tableCell, styles.particularsCell]}>{row.particularsCredit}</Text>
-                                        <Text style={[styles.tableCell, styles.voucherCell]}>{row.voucherNoCredit}</Text>
-                                        <Text style={[styles.tableCell, styles.amountCell]}>{row.creditCash !== '' && row.creditCash !== undefined ? row.creditCash.toFixed(2) : ''}</Text>
-                                        <Text style={[styles.tableCell, styles.amountCell]}>{row.creditBank !== '' && row.creditBank !== undefined ? row.creditBank.toFixed(2) : ''}</Text>
-                                    </View>
-                                );
-                            })}
-                        </ScrollView>
+            {isStartDatePickerVisible && (
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={isStartDatePickerVisible}
+                    onRequestClose={() => setStartDatePickerVisible(false)}
+                >
+                    <View style={styles.centeredView}>
+                        <View style={styles.modalView}>
+                            <DateTimePicker
+                                date={filterStartDate ? dayjs(filterStartDate) : dayjs()} // Default to today if no date is set
+                                value={dayjs(filterStartDate)} // Works with Day.js objects
+                                mode="single"
+                                minimumDate={dayjs().subtract(1, "year")}
+                                maximumDate={dayjs().add(1, "year")}
+                                onChange={(date) => {
+                                setStartDatePickerVisible(false);
+                                    setFilterStartDate(date.date); // Convert Day.js object to Date
+                                }}
+                                style={{
+                                    width: "100%",
+                                    backgroundColor: theme.COLORS.backgroundCard,
+                                    borderRadius: theme.BORDERRADIUS.md,
+                                    padding: theme.SPACING.md,
+                                }}
+                                calendarTextStyle={{ color: theme.COLORS.textDark }}
+                                headerTextStyle={{
+                                    color: theme.COLORS.textDark,
+                                    fontWeight: "bold",
+                                    fontSize: theme.FONT_SIZES.title,
+                                }}
+                                selectedItemColor={theme.COLORS.primary}
+                                weekdaysTextStyle={{ color: theme.COLORS.textMedium }}
+                                monthTextStyle={{ color: theme.COLORS.textDark }}
+                                yearTextStyle={{ color: theme.COLORS.textDark }}
+                                dayTextStyle={{ color: theme.COLORS.textLight }}
+                                todayTextStyle={{
+                                    color: theme.COLORS.primary,
+                                    fontWeight: "bold",
+                                }}
+                                selectedTextStyle={{
+                                    color: theme.COLORS.textLight,
+                                    fontWeight: "bold",
+                                }}
+                                selectedItemBackgroundColor={theme.COLORS.primary}
+                                arrowColor={theme.COLORS.primary}
+                                display={Platform.OS === "ios" ? "inline" : "default"}
+                            />
+                            <TouchableOpacity style={styles.closeButton} onPress={() => setStartDatePickerVisible(false)}>
+                                <Text style={styles.closeButtonText}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </ScrollView>
+                </Modal>
+            )}
+
+            {isEndDatePickerVisible && (
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={isEndDatePickerVisible}
+                    onRequestClose={() => setEndDatePickerVisible(false)}
+                >
+                    <View style={styles.centeredView}>
+                        <View style={styles.modalView}>
+                            <DateTimePicker
+                                date={filterEndDate ? dayjs(filterEndDate) : dayjs()} // Default to today if no date is set
+                                value={dayjs(filterEndDate)} // Works with Day.js objects
+                                mode="single"
+                                minimumDate={dayjs().subtract(1, "year")}
+                                maximumDate={dayjs().add(1, "year")}
+                                onChange={(date) => {
+                                setEndDatePickerVisible(false);
+                                setFilterEndDate(date.date); // Convert Day.js object to Date   
+                                }}
+                                style={{
+                                    width: "100%",
+                                    backgroundColor: theme.COLORS.backgroundCard,
+                                    borderRadius: theme.BORDERRADIUS.md,
+                                    padding: theme.SPACING.md,
+                                }}
+                                calendarTextStyle={{ color: theme.COLORS.textDark }}
+                                headerTextStyle={{
+                                    color: theme.COLORS.textDark,
+                                    fontWeight: "bold",
+                                    fontSize: theme.FONT_SIZES.title,
+                                }}
+                                selectedItemColor={theme.COLORS.primary}
+                                weekdaysTextStyle={{ color: theme.COLORS.textMedium }}
+                                monthTextStyle={{ color: theme.COLORS.textDark }}
+                                yearTextStyle={{ color: theme.COLORS.textDark }}
+                                dayTextStyle={{ color: theme.COLORS.textLight }}
+                                todayTextStyle={{
+                                    color: theme.COLORS.primary,
+                                    fontWeight: "bold",
+                                }}
+                                selectedTextStyle={{
+                                    color: theme.COLORS.textLight,
+                                    fontWeight: "bold",
+                                }}
+                                selectedItemBackgroundColor={theme.COLORS.primary}
+                                arrowColor={theme.COLORS.primary}
+                                display={Platform.OS === "ios" ? "inline" : "default"}
+                            />
+                            <TouchableOpacity style={styles.closeButton} onPress={() => setEndDatePickerVisible(false)}>
+                                <Text style={styles.closeButtonText}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+            )}
+
+            <ScrollView horizontal contentContainerStyle={{ flexGrow: 1 }}>
+                <View style={styles.tableContainer}>
+                    {/* Sticky Header */}
+                    <View style={styles.tableHeader}>
+                        <Text style={[styles.tableHeaderCell, styles.dateHeader]}>Date</Text>
+                        <Text style={[styles.tableHeaderCell, styles.particularsHeader]}>Particulars</Text>
+                        <Text style={[styles.tableHeaderCell, styles.voucherHeader]}>V.No</Text>
+                        <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Cash</Text>
+                        <Text style={[styles.tableHeaderCell, styles.amountHeader, styles.bankHeader]}>Bank</Text>
+                        
+                        <View style={styles.divider} />
+
+                        <Text style={[styles.tableHeaderCell, styles.particularsHeader]}>Particulars</Text>
+                        <Text style={[styles.tableHeaderCell, styles.voucherHeader]}>V.No</Text>
+                        <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Cash</Text>
+                        <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Bank</Text>
+                    </View>
+
+                    <ScrollView>
+                        {filteredCashBookRows.map((row, index) => {
+                            const rowStyle = [
+                                styles.tableRow,
+                                index % 2 === 0 ? styles.evenRow : styles.oddRow,
+                                row.type === 'balanceBd' || row.type === 'balanceCd' ? styles.balanceRow : {},
+                                row.type === 'totals' ? styles.totalsRow : {},
+                                row.isBalancedPeriod ? styles.balancedPeriodRow : {},
+                            ];
+
+                            return (
+                                <View key={index} style={rowStyle}>
+                                    <Text style={[styles.tableCell, styles.dateCell]}>{row.date}</Text>
+                                    
+                                    {/* Debit Side */}
+                                    <Text style={[styles.tableCell, styles.particularsCell]}>{row.particularsDebit}</Text>
+                                    <Text style={[styles.tableCell, styles.voucherCell]}>{row.voucherNoDebit}</Text>
+                                    <Text style={[styles.tableCell, styles.amountCell]}>{row.debitCash !== '' && row.debitCash !== undefined ? row.debitCash.toFixed(2) : ''}</Text>
+                                    <Text style={[styles.tableCell, styles.amountCell, styles.bankCell]}>{row.debitBank !== '' && row.debitBank !== undefined ? row.debitBank.toFixed(2) : ''}</Text>
+
+                                    <View style={styles.divider} />
+
+                                    {/* Credit Side */}
+                                    <Text style={[styles.tableCell, styles.particularsCell]}>{row.particularsCredit}</Text>
+                                    <Text style={[styles.tableCell, styles.voucherCell]}>{row.voucherNoCredit}</Text>
+                                    <Text style={[styles.tableCell, styles.amountCell]}>{row.creditCash !== '' && row.creditCash !== undefined ? row.creditCash.toFixed(2) : ''}</Text>
+                                    <Text style={[styles.tableCell, styles.amountCell]}>{row.creditBank !== '' && row.creditBank !== undefined ? row.creditBank.toFixed(2) : ''}</Text>
+                                </View>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
             </ScrollView>
-        </View>
+        </BackgroundContainer>
     );
 };
 
@@ -428,101 +580,201 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: theme.COLORS.backgroundApp,
     },
-    header: {
+    headerContainer: {
         backgroundColor: theme.COLORS.primary,
-        padding: 15,
-        alignItems: 'center',
+        padding: theme.SPACING.lg,
+        borderBottomLeftRadius: theme.BORDERRADIUS.lg,
+        borderBottomRightRadius: theme.BORDERRADIUS.lg,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: theme.FONT_SIZES.h1,
         fontWeight: 'bold',
-        color: 'white',
+        color: theme.COLORS.textLight,
+        textAlign: 'center',
+        marginBottom: theme.SPACING.md,
     },
-    lastBalancedInfo: {
-        color: 'white',
-        marginTop: 5,
+    headerInfo: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: theme.BORDERRADIUS.md,
+        padding: theme.SPACING.md,
+        marginBottom: theme.SPACING.md,
+    },
+    infoText: {
+        color: theme.COLORS.textLight,
+        fontSize: theme.FONT_SIZES.body,
+        textAlign: 'center',
+    },
+    balanceText: {
+        color: theme.COLORS.textLight,
+        fontSize: theme.FONT_SIZES.lg,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginTop: theme.SPACING.sm,
     },
     balanceButton: {
-        backgroundColor: '#28a745',
-        padding: 10,
-        borderRadius: 5,
-        marginTop: 10,
+        backgroundColor: theme.COLORS.success,
+        paddingVertical: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.md,
+        alignItems: 'center',
     },
     balanceButtonText: {
-        color: 'white',
+        color: theme.COLORS.textLight,
         fontWeight: 'bold',
+        fontSize: theme.FONT_SIZES.lg,
     },
-    loadingContainer: {
+    tableContainer: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     tableHeader: {
         flexDirection: 'row',
-        backgroundColor: '#e9ecef',
+        backgroundColor: theme.COLORS.backgroundCard,
         paddingVertical: 10,
+        borderBottomWidth: 2,
+        borderBottomColor: theme.COLORS.primary,
     },
     tableHeaderCell: {
         fontWeight: 'bold',
         textAlign: 'center',
         paddingHorizontal: 5,
-        borderWidth: 1,
-        borderColor: '#ddd',
+        color: theme.COLORS.textDark,
     },
     tableRow: {
         flexDirection: 'row',
-        paddingVertical: 10,
+        paddingVertical: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#ddd',
+        borderBottomColor: theme.COLORS.border,
+        alignItems: 'center',
+    },
+    evenRow: {
+        backgroundColor: theme.COLORS.backgroundLight,
+    },
+    oddRow: {
+        backgroundColor: theme.COLORS.backgroundCard,
     },
     tableCell: {
         paddingHorizontal: 5,
-        borderWidth: 1,
-        borderColor: '#ddd',
     },
     dateHeader: {
-        width: 100,
+        width: 80,
     },
     particularsHeader: {
-        width: 150,
+        flex: 1,
+        minWidth: 120,
     },
     voucherHeader: {
-        width: 80,
+        width: 50,
     },
     amountHeader: {
-        width: 100,
+        width: 80,
         textAlign: 'right',
+    },
+    bankHeader: {
+        marginRight: 5, // Space before divider
     },
     dateCell: {
-        width: 100,
+        width: 80,
+        fontSize: theme.FONT_SIZES.sm,
+        color: theme.COLORS.textMedium,
     },
     particularsCell: {
-        width: 150,
+        flex: 1,
+        minWidth: 120,
     },
     voucherCell: {
-        width: 80,
+        width: 50,
+        textAlign: 'center',
     },
     amountCell: {
-        width: 100,
+        width: 80,
         textAlign: 'right',
+        fontWeight: '500',
+    },
+    bankCell: {
+        marginRight: 5, // Space before divider
     },
     balanceRow: {
-        backgroundColor: '#e0f7fa',
-        fontWeight: 'bold',
+        backgroundColor: theme.COLORS.backgroundAccent,
     },
     totalsRow: {
-        backgroundColor: '#cfe2ff',
-        fontWeight: 'bold',
+        backgroundColor: theme.COLORS.backgroundAccent,
         borderTopWidth: 2,
         borderBottomWidth: 2,
-        borderColor: '#007bff',
+        borderColor: theme.COLORS.primary,
     },
     balancedPeriodRow: {
-        backgroundColor: '#e0ffe0',
+        // Example: a subtle tint for balanced rows
+        backgroundColor: '#e8f5e9', // A light green tint
     },
-    debitCreditDivider: {
-        borderRightWidth: 2,
-        borderRightColor: '#000',
+    divider: {
+        width: 2,
+        backgroundColor: theme.COLORS.primary,
+        height: '100%',
+    },
+    filterContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginTop: 10,
+    },
+    centeredView: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "rgba(0,0,0,0.5)", // Add overlay background
+      },
+    modalView: {
+        width: "90%",
+        backgroundColor: theme.COLORS.primary,
+        borderRadius: theme.BORDERRADIUS.md,
+        padding: theme.SPACING.lg,
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+      },
+      modalTitle: {
+        fontSize: theme.FONT_SIZES.h2,
+        marginBottom: theme.SPACING.lg,
+        textAlign: "center",
+        fontWeight: "bold",
+        color: theme.COLORS.textLight,
+      },
+    dateInputButton: {
+        backgroundColor: theme.COLORS.backgroundCard,
+        padding: 10,
+        borderRadius: 5,
+        flex: 1,
+        marginHorizontal: 5,
+        alignItems: 'center',
+        ...Platform.select({
+            ios: {
+                borderWidth: 1,
+                borderColor: theme.COLORS.border,
+            },
+            android: {
+                // No specific Android styles needed for now
+            },
+        }),
+    },
+    dateInputText: {
+        color: theme.COLORS.textDark,
+        fontSize: theme.FONT_SIZES.body,
+        fontWeight: "bold",
+        textAlign: "center",
+        height: 45,
+        lineHeight: 45, // Center text vertically
+        ...Platform.select({
+            ios: {
+                color: theme.COLORS.textDark, // Use textDark for iOS
+            },
+            android: {
+                color: theme.COLORS.textDark, // Use textDark for Android
+            },
+        }),
     },
 });
 

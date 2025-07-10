@@ -1,159 +1,283 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import TopNavbar from '../components/TopNavbar';
-import { theme } from '../styles/theme';
-import api from '../utils/api';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    ActivityIndicator,
+    Alert,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import dayjs from 'dayjs';
+
+import BackgroundContainer from '../components/BackgroundContainer';
+import CollapsibleSection from '../components/CollapsibleSection';
 import { useNotification } from '../context/NotificationContext';
-import { Picker } from '@react-native-picker/picker';
+import api from '../utils/api';
+import { theme } from '../styles/theme';
 
 const BookingDetailScreen = ({ route, navigation }) => {
     const { bookingId } = route.params;
     const [booking, setBooking] = useState(null);
-    const [clients, setClients] = useState([]);
-    const [selectedClient, setSelectedClient] = useState(null);
-    const [service, setService] = useState('');
-    const [bookingDate, setBookingDate] = useState(new Date());
-    const [deliveryDate, setDeliveryDate] = useState(new Date());
-    const [price, setPrice] = useState('');
-    const [status, setStatus] = useState('Pending');
+    const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
 
-    const fetchBooking = useCallback(async () => {
+    const fetchBookingDetails = useCallback(async () => {
         try {
+            setLoading(true);
             const { data } = await api.get(`/bookings/${bookingId}`);
             setBooking(data);
-            setSelectedClient(data.client._id);
-            setService(data.service);
-            setBookingDate(new Date(data.bookingDate));
-            setDeliveryDate(new Date(data.deliveryDate));
-            setPrice(data.price.toString());
-            setStatus(data.status);
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Failed to fetch booking details.', 'error');
+        } finally {
+            setLoading(false);
         }
     }, [bookingId, showNotification]);
 
-    const fetchClients = useCallback(async () => {
-        try {
-            const { data } = await api.get('/clients');
-            setClients(data);
-        } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to fetch clients.', 'error');
-        }
-    }, [showNotification]);
-
     useEffect(() => {
-        fetchBooking();
-        fetchClients();
-    }, [fetchBooking, fetchClients]);
+        const unsubscribe = navigation.addListener('focus', fetchBookingDetails);
+        return unsubscribe;
+    }, [navigation, fetchBookingDetails]);
 
-    const handleUpdateBooking = async () => {
-        try {
-            await api.put(`/bookings/${bookingId}`, {
-                client: selectedClient,
-                service,
-                bookingDate,
-                deliveryDate,
-                price: parseFloat(price),
-                status,
-            });
-            showNotification('Booking updated successfully!', 'success');
-            navigation.goBack();
-        } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to update booking.', 'error');
+    const handleCompleteBooking = async () => {
+        Alert.alert(
+            "Complete Booking",
+            "Are you sure you want to mark this booking as completed?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Complete",
+                    onPress: async () => {
+                        try {
+                            const updatedBooking = { ...booking, status: 'Completed' };
+                            const { data } = await api.put(`/bookings/${booking._id}`, updatedBooking);
+                            setBooking(data);
+                            showNotification('Booking marked as completed!', 'success');
+                        } catch (err) {
+                            showNotification(err.response?.data?.msg || "Failed to update status.", 'error');
+                        }
+                    },
+                    style: "default"
+                }
+            ]
+        );
+    };
+
+    const getStatusStyle = (status) => {
+        switch (status) {
+            case 'Pending': return { color: theme.COLORS.warning };
+            case 'In Progress': return { color: theme.COLORS.info };
+            case 'Completed': return { color: theme.COLORS.success };
+            case 'Cancelled': return { color: theme.COLORS.danger };
+            default: return { color: theme.COLORS.textMedium };
         }
     };
 
-    if (!booking) {
+    if (loading || !booking) {
         return (
-            <View style={styles.container}>
-                <TopNavbar />
-                <View style={styles.content}>
-                    <Text>Loading...</Text>
+            <BackgroundContainer>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={theme.COLORS.primary} />
+                    <Text style={styles.loadingText}>Loading booking details...</Text>
                 </View>
-            </View>
+            </BackgroundContainer>
         );
     }
 
+    const { client, service, deliveryDate, status, price = 0, payment = 0, measurements, notes } = booking;
+    const amountRemaining = price - payment;
+
     return (
-        <View style={styles.container}>
-            <TopNavbar />
+        <BackgroundContainer>
             <ScrollView contentContainerStyle={styles.content}>
-                <Text style={styles.heading}>Booking Details</Text>
-                <Picker
-                    selectedValue={selectedClient}
-                    onValueChange={(itemValue) => setSelectedClient(itemValue)}
-                    style={styles.picker}
-                >
-                    {clients.map((client) => (
-                        <Picker.Item key={client._id} label={client.name} value={client._id} />
-                    ))}
-                </Picker>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Service"
-                    value={service}
-                    onChangeText={setService}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Price"
-                    value={price}
-                    onChangeText={setPrice}
-                    keyboardType="numeric"
-                />
-                <Picker
-                    selectedValue={status}
-                    onValueChange={(itemValue) => setStatus(itemValue)}
-                    style={styles.picker}
-                >
-                    <Picker.Item label="Pending" value="Pending" />
-                    <Picker.Item label="Completed" value="Completed" />
-                    <Picker.Item label="Cancelled" value="Cancelled" />
-                </Picker>
-                {/* Add date pickers for bookingDate and deliveryDate */}
-                <TouchableOpacity style={styles.button} onPress={handleUpdateBooking}>
-                    <Text style={styles.buttonText}>Update Booking</Text>
-                </TouchableOpacity>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Booking Details</Text>
+                    <TouchableOpacity
+                        style={styles.editButton}
+                        onPress={() => navigation.navigate('AddBooking', { booking: booking })}
+                    >
+                        <Ionicons name="create-outline" size={24} color={theme.COLORS.textLight} />
+                        <Text style={styles.editButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Client Information</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('ClientDetail', { clientId: client._id })}>
+                        <Text style={styles.clientName}>{client.name}</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.detailText}>{client.phone}</Text>
+                    {client.email && <Text style={styles.detailText}>{client.email}</Text>}
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Booking Details</Text>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Service</Text>
+                        <Text style={styles.detailValue}>{service}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Status</Text>
+                        <Text style={[styles.detailValue, getStatusStyle(status)]}>{status}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Delivery Date</Text>
+                        <Text style={styles.detailValue}>{dayjs(deliveryDate).format('MMM D, YYYY')}</Text>
+                    </View>
+                    {notes && (
+                        <View style={styles.notesSection}>
+                            <Text style={styles.detailLabel}>Notes</Text>
+                            <Text style={styles.notesText}>{notes}</Text>
+                        </View>
+                    )}
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Financials</Text>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Total Amount</Text>
+                        <Text style={styles.financialValue}>₦{price.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Amount Paid</Text>
+                        <Text style={[styles.financialValue, { color: theme.COLORS.success }]}>₦{payment.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Amount Remaining</Text>
+                        <Text style={[styles.financialValue, { color: theme.COLORS.danger }]}>₦{amountRemaining.toFixed(2)}</Text>
+                    </View>
+                </View>
+
+                {measurements && (
+                     <CollapsibleSection title="Measurements">
+                        {Object.entries(measurements).map(([key, value]) => (
+                            <View style={styles.detailRow} key={key}>
+                                <Text style={styles.detailLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+                                <Text style={styles.detailValue}>{value}</Text>
+                            </View>
+                        ))}
+                    </CollapsibleSection>
+                )}
+
+                {status !== 'Completed' && (
+                    <TouchableOpacity style={styles.completeButton} onPress={handleCompleteBooking}>
+                        <Ionicons name="checkmark-circle-outline" size={24} color={theme.COLORS.textLight} />
+                        <Text style={styles.completeButtonText}>Mark as Completed</Text>
+                    </TouchableOpacity>
+                )}
             </ScrollView>
-        </View>
+        </BackgroundContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    loadingContainer: {
         flex: 1,
-        backgroundColor: theme.COLORS.backgroundApp,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: theme.SPACING.sm,
+        color: theme.COLORS.textMedium,
     },
     content: {
         padding: theme.SPACING.md,
+        paddingBottom: 40,
     },
-    heading: {
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.SPACING.lg,
+    },
+    headerTitle: {
         fontSize: theme.FONT_SIZES.h2,
         fontWeight: 'bold',
         color: theme.COLORS.primary,
-        marginBottom: theme.SPACING.md,
-        textAlign: 'center',
     },
-    picker: {
-        backgroundColor: theme.COLORS.backgroundCard,
-        marginBottom: theme.SPACING.md,
-    },
-    input: {
-        backgroundColor: theme.COLORS.backgroundCard,
-        padding: theme.SPACING.md,
-        borderRadius: theme.BORDERRADIUS.sm,
-        marginBottom: theme.SPACING.md,
-    },
-    button: {
-        backgroundColor: theme.COLORS.primary,
-        padding: theme.SPACING.md,
-        borderRadius: theme.BORDERRADIUS.sm,
+    editButton: {
+        flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: theme.COLORS.primary,
+        paddingVertical: theme.SPACING.sm,
+        paddingHorizontal: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.md,
     },
-    buttonText: {
-        color: '#fff',
+    editButtonText: {
+        color: theme.COLORS.textLight,
         fontWeight: 'bold',
+        marginLeft: theme.SPACING.sm,
+    },
+    section: {
+        backgroundColor: theme.COLORS.backgroundCard,
+        borderRadius: theme.BORDERRADIUS.md,
+        padding: theme.SPACING.md,
+        marginBottom: theme.SPACING.md,
+    },
+    sectionTitle: {
+        fontSize: theme.FONT_SIZES.h3,
+        fontWeight: 'bold',
+        color: theme.COLORS.primary,
+        marginBottom: theme.SPACING.md,
+    },
+    clientName: {
+        fontSize: theme.FONT_SIZES.lg,
+        fontWeight: 'bold',
+        color: theme.COLORS.accent,
+        textDecorationLine: 'underline',
+        marginBottom: theme.SPACING.xs,
+    },
+    detailText: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textMedium,
+        marginBottom: theme.SPACING.xs,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: theme.SPACING.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.COLORS.border,
+    },
+    detailLabel: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textMedium,
+        fontWeight: '600',
+    },
+    detailValue: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textDark,
+        fontWeight: '600',
+    },
+    financialValue: {
+        fontSize: theme.FONT_SIZES.lg,
+        fontWeight: 'bold',
+    },
+    notesSection: {
+        marginTop: theme.SPACING.sm,
+    },
+    notesText: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textDark,
+        fontStyle: 'italic',
+        lineHeight: 22,
+    },
+    completeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.COLORS.success,
+        padding: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.md,
+        marginTop: theme.SPACING.lg,
+    },
+    completeButtonText: {
+        color: theme.COLORS.textLight,
+        fontWeight: 'bold',
+        fontSize: theme.FONT_SIZES.button,
+        marginLeft: theme.SPACING.sm,
     },
 });
 

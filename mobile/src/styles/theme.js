@@ -18,6 +18,7 @@ export const FONT_SIZES = {
   h1: 38,
   h2: 32,
   h3: 26,
+  lg: 20,
   body: 16,
   small: 14,
   button: 18,
@@ -34,6 +35,7 @@ export const SPACING = {
 export const BORDERRADIUS = {
   sm: 4,
   md: 8,
+  lg: 12,
 };
 
 export const theme = {

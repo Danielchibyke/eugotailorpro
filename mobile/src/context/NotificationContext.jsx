@@ -55,6 +55,7 @@ export const useNotification = () => useContext(NotificationContext);
 
 const styles = StyleSheet.create({
     notification: {
+        marginTop: 40,
         position: 'absolute',
         top: 50,
         left: 20,

@@ -42,8 +42,10 @@ const createBooking = asyncHandler(async (req, res) => {
 // @route   GET /api/bookings
 // @access  Private (Admin/Staff)
 const getBookings = asyncHandler(async (req, res) => {
+    const { client: clientId } = req.query;
+    const filter = clientId ? { client: clientId } : {};
    
-    const bookings = await Booking.find({})
+    const bookings = await Booking.find(filter)
         .populate('client', 'name email phone') // Populate client info
         .populate('bookedBy', 'name email'); // Populate booker info
     res.json(bookings);
