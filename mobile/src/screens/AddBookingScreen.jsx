@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Modal, Image, Button, ActivityIndicator } from 'react-native';
 import TopNavbar from '../components/TopNavbar';
 import { theme } from '../styles/theme';
 import api from '../utils/api';
 import { useNotification } from '../context/NotificationContext';
+import * as ImagePicker from 'expo-image-picker';
+import axios from 'axios';
+import * as ImageManipulator from 'expo-image-manipulator';
+import ImageZoomModal from '../components/ImageZoomModal';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
@@ -24,6 +28,12 @@ const AddBookingScreen = ({ navigation, route }) => {
         price: '',
         payment: '',
     });
+    const [imageUri, setImageUri] = useState(null);
+    const [uploadedImageUrl, setUploadedImageUrl] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
+    const openZoomModal = () => setIsZoomModalVisible(true);
+    const closeZoomModal = () => setIsZoomModalVisible(false);
     const [isBookingDatePickerVisible, setBookingDatePickerVisible] = useState(false);
     const [isDeliveryDatePickerVisible, setDeliveryDatePickerVisible] = useState(false);
     const [isReminderDatePickerVisible, setReminderDatePickerVisible] = useState(false);
@@ -57,6 +67,10 @@ const AddBookingScreen = ({ navigation, route }) => {
                 price: (booking.price || '').toString(),
                 payment: (booking.payment || '').toString(),
             });
+            if (booking.design) {
+                setImageUri(booking.design);
+                setUploadedImageUrl(booking.design);
+            }
         }
     }, [booking]);
 
@@ -76,6 +90,57 @@ const AddBookingScreen = ({ navigation, route }) => {
         setFormData({ ...formData, [field]: value });
     };
 
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            const manipResult = await ImageManipulator.manipulateAsync(
+                result.assets[0].uri,
+                [],
+                { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            setImageUri(manipResult.uri);
+            await uploadImage(manipResult.uri, manipResult.mimeType || 'image/jpeg');
+        }
+    };
+
+    const uploadImage = async (uri, mimeType) => {
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('image', {
+            uri: uri,
+            name: 'design_image.' + mimeType.split('/')[1],
+            type: mimeType,
+        });
+
+        try {
+            const response = await api.post('/upload/image', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+                timeout: 520000, // Set client-side timeout to 520 seconds
+            });
+            console.log('Upload successful, full response object:', response);
+            console.log('Upload successful, response data:', response.data);
+            console.log('Received imageUrl:', response.data.imageUrl);
+            setUploadedImageUrl(response.data.imageUrl);
+            showNotification('Image uploaded successfully!', 'success');
+        } catch (error) {
+            console.error('Image upload error:', error);
+            console.error('Error response data:', error.response?.data);
+            console.error('Error message:', error.message);
+            showNotification(error.response?.data?.msg || 'Failed to upload image.', 'error');
+            setUploadedImageUrl(null);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const handleSaveBooking = async () => {
         if (!formData.client || !formData.price) {
             showNotification('Please fill in all fields.', 'error');
@@ -90,7 +155,7 @@ const AddBookingScreen = ({ navigation, route }) => {
                 deliveryDate: dayjs(formData.deliveryDate),
                 reminderDate: dayjs(formData.reminderDate),
                 client: formData.client,
-
+                design: uploadedImageUrl || formData.design, // Use uploaded image URL or existing design URL
             };
 
             if (booking) {
@@ -108,7 +173,7 @@ const AddBookingScreen = ({ navigation, route }) => {
 
     return (
         <View style={styles.container}>
-            <TopNavbar />
+       
             <ScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.heading}>{booking ? 'Edit Booking' : 'Add Booking'}</Text>
                 <TextInput
@@ -143,12 +208,22 @@ const AddBookingScreen = ({ navigation, route }) => {
                     onChangeText={(value) => handleInputChange('payment', value)}
                     keyboardType="numeric"
                 />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Design URL"
-                    value={formData.design}
-                    onChangeText={(value) => handleInputChange('design', value)}
-                />
+                <TouchableOpacity 
+                    style={styles.button} 
+                    onPress={pickImage}
+                    disabled={isUploading}
+                >
+                    {isUploading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.buttonText}>Upload Design Image</Text>
+                    )}
+                </TouchableOpacity>
+                {imageUri && (
+                    <TouchableOpacity onPress={openZoomModal}>
+                        <Image source={{ uri: imageUri }} style={styles.designImagePreview} />
+                    </TouchableOpacity>
+                )}
                 <TextInput
                     style={styles.input}
                     placeholder="Notes"
@@ -249,6 +324,14 @@ const AddBookingScreen = ({ navigation, route }) => {
                         </View>
                     </View>
                 </Modal>
+            )}
+
+            {imageUri && (
+                <ImageZoomModal
+                    imageUrl={imageUri}
+                    visible={isZoomModalVisible}
+                    onClose={closeZoomModal}
+                />
             )}
         </View>
     );

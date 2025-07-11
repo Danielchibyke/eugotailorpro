@@ -19,8 +19,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { theme } from '../styles/theme';
 
-const StatCard = ({ icon, label, value, color, onPress }) => (
-    <TouchableOpacity style={styles.statCard} onPress={onPress}>
+const StatCard = ({ icon, label, value, color, onPress, fullWidth }) => (
+    <TouchableOpacity style={[styles.statCard, fullWidth && styles.fullWidthStatCard]} onPress={onPress}>
         <View style={[styles.iconContainer, { backgroundColor: color }]}>
             <Ionicons name={icon} size={24} color={theme.COLORS.textLight} />
         </View>
@@ -61,7 +61,7 @@ const DashboardScreen = ({ navigation }) => {
                 totalClients: data.totalClients || 0,
                 totalRevenue: data.totalRevenue || 0,
             });
-            setRecentBookings(data.recentBookings || []);
+            setRecentBookings(data.recentBookings.filter(booking => booking.status === 'Pending') || []);
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Failed to fetch dashboard data.', 'error');
         } finally {
@@ -73,6 +73,13 @@ const DashboardScreen = ({ navigation }) => {
         const unsubscribe = navigation.addListener('focus', fetchData);
         return unsubscribe;
     }, [navigation, fetchData]);
+
+    const handleEditBooking = (booking) => {
+        navigation.navigate('AddBooking', { booking: booking });
+    };
+
+    
+
 
     if (loading) {
         return (
@@ -93,8 +100,8 @@ const DashboardScreen = ({ navigation }) => {
                 <View style={styles.statsGrid}>
                     <StatCard icon="briefcase-outline" label="Total Bookings" value={stats.totalBookings} color="#4a90e2" onPress={() => navigation.navigate('Bookings')} />
                     <StatCard icon="time-outline" label="Pending" value={stats.pendingBookings} color="#f5a623" onPress={() => navigation.navigate('Bookings')} />
-                    <StatCard icon="people-outline" label="Total Clients" value={stats.totalClients} color="#bd10e0" onPress={() => navigation.navigate('Clients')} />
-                    <StatCard icon="cash-outline" label="Revenue" value={`₦${stats.totalRevenue.toFixed(2)}`} color="#7ed321" onPress={() => navigation.navigate('Financials')} />
+                    <StatCard icon="people-outline" label="Total Clients" value={stats.totalClients} color="#bd10e0" onPress={() => navigation.navigate('Clients')}  fullWidth={true}/>
+                    <StatCard icon="cash-outline" label="Revenue" value={`₦${stats.totalRevenue.toFixed(2)}`} color="#7ed321" onPress={() => navigation.navigate('Financials')} fullWidth={true} />
                 </View>
 
                 <View style={styles.section}>
@@ -116,6 +123,48 @@ const DashboardScreen = ({ navigation }) => {
                                 <BookingCard
                                     booking={item}
                                     onView={() => navigation.navigate('BookingDetail', { bookingId: item._id })}
+                                    onEdit={() => handleEditBooking(item)}
+                                    onDelete={() =>
+                                        Alert.alert(
+                                            'Delete Booking',
+                                            
+                                            'Are you sure you want to delete this booking?',
+                                            [
+                                                {
+                                                    text: 'Cancel',
+                                                    style: 'cancel',
+                                                },
+                                                {
+                                                    text: 'Delete',
+                                                    style: 'destructive',
+                                                    onPress: async () => {
+                                                        try {
+                                                            await api.delete(`/bookings/${item._id}`);
+                                                            setRecentBookings(recentBookings.filter(b => b._id !== item._id));
+                                                            showNotification('Booking deleted successfully!', 'success');
+                                                        } catch (err) {
+                                                            showNotification(err.response?.data?.msg || 'Failed to delete booking.', 'error');
+                                                        }
+                                                    },
+                                                },
+                                            ],
+                                        )
+
+                                                }
+                                    
+                                    onComplete={() => {
+                                        const updatedBooking = { ...item, status: 'Completed' };
+                                        api.put(`/bookings/${item._id}`, updatedBooking)
+                                            .then(({ data }) => {
+                                                setRecentBookings(recentBookings.map(b => (b._id === item._id ? data : b)));
+                                                showNotification('Booking marked as completed!', 'success');
+                                            })
+                                            .catch(err => {
+                                                showNotification(err.response?.data?.msg || 'Failed to update booking status.', 'error');
+                                            });
+                                    }
+                                    }
+
                                 />
                             )}
                             keyExtractor={(item) => item._id}
@@ -138,15 +187,18 @@ const styles = StyleSheet.create({
         backgroundColor: theme.COLORS.backgroundApp,
     },
     content: {
-        paddingBottom: 40,
+        paddingBottom: 10,
     },
     header: {
         backgroundColor: theme.COLORS.primary,
         paddingHorizontal: theme.SPACING.lg,
-        paddingTop: theme.SPACING.xl,
-        paddingBottom: theme.SPACING.xxl,
+        paddingTop: theme.SPACING.sm,
+        paddingBottom: theme.SPACING.xl,
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: theme.SPACING.md,
     },
     headerGreeting: {
         fontSize: theme.FONT_SIZES.h1,
@@ -161,67 +213,102 @@ const styles = StyleSheet.create({
     statsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        paddingHorizontal: theme.SPACING.md,
+        justifyContent: 'space-around',
+        paddingHorizontal: theme.SPACING.sm,
         marginTop: -theme.SPACING.xxl, // Overlap header
+        marginBottom: theme.SPACING.md,
     },
     statCard: {
-        width: '48%',
+        width: '45%', // Slightly smaller width
         backgroundColor: theme.COLORS.backgroundCard,
-        borderRadius: theme.BORDERRADIUS.md,
-        padding: theme.SPACING.md,
-        marginBottom: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.sm, // Smaller border radius
+        padding: theme.SPACING.sm, // Reduced padding
+        marginBottom: theme.SPACING.sm, // Reduced margin
         flexDirection: 'row',
         alignItems: 'center',
-        elevation: 3,
+        elevation: 2, // Slightly less shadow
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+        textAlign: 'left',
     },
     iconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 30, // Smaller icon container
+        height: 30,
+        borderRadius: 15,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: theme.SPACING.md,
+        marginRight: theme.SPACING.sm, // Reduced margin
     },
     statValue: {
-        fontSize: theme.FONT_SIZES.h3,
+        fontSize: theme.FONT_SIZES.body, // Smaller font size
         fontWeight: 'bold',
         color: theme.COLORS.textDark,
     },
     statLabel: {
-        fontSize: theme.FONT_SIZES.sm,
+        fontSize: theme.FONT_SIZES.xs, // Smaller font size
         color: theme.COLORS.textMedium,
     },
+    fullWidthStatCard: {
+        width: '95%', // Take full width with some horizontal padding
+        marginBottom: theme.SPACING.md, // Ensure consistent spacing
+    },
     section: {
-        marginTop: theme.SPACING.md,
+        marginTop: theme.SPACING.xs,
         paddingHorizontal: theme.SPACING.md,
     },
     sectionTitle: {
-        fontSize: theme.FONT_SIZES.h3,
+        fontSize: theme.FONT_SIZES.h4, // Smaller title for quick actions
         fontWeight: 'bold',
-        color: theme.COLORS.textDark,
-        marginBottom: theme.SPACING.md,
+        color: theme.COLORS.textLight,
+        marginBottom: theme.SPACING.sm,
+        textAlign: 'center',
     },
     quickActionsGrid: {
         flexDirection: 'row',
         justifyContent: 'space-around',
         backgroundColor: theme.COLORS.backgroundCard,
-        borderRadius: theme.BORDERRADIUS.md,
-        paddingVertical: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.sm, // Smaller border radius
+        paddingVertical: theme.SPACING.sm, // Reduced padding
+        width: '100%',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        marginBottom: theme.SPACING.md,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+        elevation: 2,
+        paddingHorizontal: theme.SPACING.xs, // Adjusted padding
+        marginTop: theme.SPACING.sm,
     },
     quickActionButton: {
         alignItems: 'center',
         flex: 1,
+        padding: theme.SPACING.xs, // Reduced padding
+        marginHorizontal: theme.SPACING.xs, // Reduced margin
+        backgroundColor: theme.COLORS.backgroundCard,
+        borderRadius: theme.BORDERRADIUS.xs, // Even smaller border radius
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+        justifyContent: 'center',
+        flexDirection: 'column',
+        height: 80, // Smaller height
+        maxWidth: '23%', // Adjust for 4 items per row, with some spacing
+        minWidth: 70, // Minimum width to prevent squishing
+        paddingVertical: theme.SPACING.xs,
+        marginBottom: theme.SPACING.sm,
     },
     quickActionLabel: {
         marginTop: theme.SPACING.xs,
-        fontSize: theme.FONT_SIZES.sm,
+        fontSize: theme.FONT_SIZES.xs, // Smaller font size
         color: theme.COLORS.primary,
         fontWeight: '600',
+        textAlign: 'center',
     },
     emptyStateText: {
         textAlign: 'center',

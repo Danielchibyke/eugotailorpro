@@ -85,7 +85,7 @@ const BookingDetailScreen = ({ route, navigation }) => {
         );
     }
 
-    const { client, service, deliveryDate, status, price = 0, payment = 0, measurements, notes } = booking;
+    const { client, service, deliveryDate, status, price = 0, payment = 0, notes } = booking;
     const amountRemaining = price - payment;
 
     return (
@@ -110,6 +110,17 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     <Text style={styles.detailText}>{client.phone}</Text>
                     {client.email && <Text style={styles.detailText}>{client.email}</Text>}
                 </View>
+
+                {client.measurements && Object.keys(client.measurements).length > 0 && (
+                    <CollapsibleSection title="Client Measurements">
+                        {Object.entries(client.measurements).map(([key, value]) => (
+                            <View style={styles.detailRow} key={key}>
+                                <Text style={styles.detailLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+                                <Text style={styles.detailValue}>{value}</Text>
+                            </View>
+                        ))}
+                    </CollapsibleSection>
+                )}
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Booking Details</Text>
@@ -148,17 +159,6 @@ const BookingDetailScreen = ({ route, navigation }) => {
                         <Text style={[styles.financialValue, { color: theme.COLORS.danger }]}>₦{amountRemaining.toFixed(2)}</Text>
                     </View>
                 </View>
-
-                {measurements && (
-                     <CollapsibleSection title="Measurements">
-                        {Object.entries(measurements).map(([key, value]) => (
-                            <View style={styles.detailRow} key={key}>
-                                <Text style={styles.detailLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
-                                <Text style={styles.detailValue}>{value}</Text>
-                            </View>
-                        ))}
-                    </CollapsibleSection>
-                )}
 
                 {status !== 'Completed' && (
                     <TouchableOpacity style={styles.completeButton} onPress={handleCompleteBooking}>

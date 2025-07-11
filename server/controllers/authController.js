@@ -74,7 +74,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     const recentBookings = await Booking.find()
         .sort({ createdAt: -1 })
         .limit(5)
-        .populate('client', 'name');
+        .populate('client', 'name measurements');
 
     res.json({
         totalBookings,

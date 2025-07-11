@@ -1,0 +1,22 @@
+Cloudinary upload result: {
+  asset_id: '7c11393a209533954720c052d073cc1f',
+  public_id: 'eugotailorpro/ddfhyqqzwlbuhaxfqasz',
+  version: 1752170091,
+  version_id: 'dc4f405015985b9d5508bc4ad9c715d0',
+  signature: 'fe2f1072f11632667de772c1c7e80c7f185f96d1',
+  width: 3024,
+  height: 3025,
+  format: 'jpg',
+  resource_type: 'image',
+  created_at: '2025-07-10T17:54:51Z',
+  tags: [],
+  bytes: 6523965,
+  type: 'upload',
+  etag: '0984ce9836a08e197adf707c24d1cde8',
+  placeholder: false,
+  url: 'http://res.cloudinary.com/dcmxdej1o/image/upload/v1752170091/eugotailorpro/ddfhyqqzwlbuhaxfqasz.jpg',
+  secure_url: 'https://res.cloudinary.com/dcmxdej1o/image/upload/v1752170091/eugotailorpro/ddfhyqqzwlbuhaxfqasz.jpg',
+  asset_folder: 'eugotailorpro',   
+  display_name: 'ddfhyqqzwlbuhaxfqasz',
+  api_key: '373545679529553'       
+}

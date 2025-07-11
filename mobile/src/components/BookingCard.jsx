@@ -1,11 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { theme } from '../styles/theme';
+import ImageZoomModal from './ImageZoomModal';
 
 const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
     const { client, service, deliveryDate, status, price, payment } = booking;
+    const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
+
+    const openZoomModal = () => setIsZoomModalVisible(true);
+    const closeZoomModal = () => setIsZoomModalVisible(false);
 
     const getStatusStyle = (status) => {
         switch (status) {
@@ -50,6 +55,11 @@ const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
             </View>
 
             <View style={styles.cardBody}>
+                {booking.design && (
+                    <TouchableOpacity onPress={openZoomModal}>
+                        <Image source={{ uri: booking.design }} style={styles.designImage} />
+                    </TouchableOpacity>
+                )}
                 <Text style={styles.service} numberOfLines={1}>{service}</Text>
                 <View style={styles.dateContainer}>
                     <Ionicons name="calendar-outline" size={16} color={theme.COLORS.textMedium} />
@@ -58,6 +68,18 @@ const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
                     </Text>
                 </View>
             </View>
+
+            {client?.measurements && Object.keys(client.measurements).length > 0 && (
+                <View style={styles.measurementsSection}>
+                    <Text style={styles.measurementsTitle}>Client Measurements</Text>
+                    {Object.entries(client.measurements).map(([key, value]) => (
+                        <View style={styles.measurementRow} key={key}>
+                            <Text style={styles.measurementLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}:</Text>
+                            <Text style={styles.measurementValue}>{value}</Text>
+                        </View>
+                    ))}
+                </View>
+            )}
 
             <View style={styles.financials}>
                 <View style={styles.financialItem}>
@@ -94,6 +116,14 @@ const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
                     <Text style={styles.actionText}>Delete</Text>
                 </TouchableOpacity>
             </View>
+
+            {booking.design && (
+                <ImageZoomModal
+                    imageUrl={booking.design}
+                    visible={isZoomModalVisible}
+                    onClose={closeZoomModal}
+                />
+            )}
         </TouchableOpacity>
     );
 };
@@ -140,6 +170,13 @@ const styles = StyleSheet.create({
         color: theme.COLORS.textMedium,
         marginBottom: theme.SPACING.xs,
     },
+    designImage: {
+        width: '100%',
+        height: 300,
+        resizeMode: 'cover',
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginBottom: theme.SPACING.sm,
+    },
     dateContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -184,6 +221,32 @@ const styles = StyleSheet.create({
         marginLeft: theme.SPACING.xs,
         fontSize: theme.FONT_SIZES.sm,
         color: theme.COLORS.textDark,
+    },
+    measurementsSection: {
+        borderTopWidth: 1,
+        borderTopColor: theme.COLORS.border,
+        paddingTop: theme.SPACING.md,
+        marginBottom: theme.SPACING.md,
+    },
+    measurementsTitle: {
+        fontSize: theme.FONT_SIZES.body,
+        fontWeight: 'bold',
+        color: theme.COLORS.primary,
+        marginBottom: theme.SPACING.sm,
+    },
+    measurementRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: theme.SPACING.xs,
+    },
+    measurementLabel: {
+        fontSize: theme.FONT_SIZES.sm,
+        color: theme.COLORS.textMedium,
+    },
+    measurementValue: {
+        fontSize: theme.FONT_SIZES.sm,
+        color: theme.COLORS.textDark,
+        fontWeight: '600',
     },
 });
 

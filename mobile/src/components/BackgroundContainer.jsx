@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: theme.COLORS.primaryLight,
         justifyContent: 'center',
-        padding: theme.SPACING.md,
+        padding: theme.SPACING.xs,
     },
 });
 
