@@ -6,9 +6,20 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import NotificationHandler from './src/components/NotificationHandler'; // Import the new component
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+// Set up notification handler for foreground notifications
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -18,14 +29,10 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Pre-load fonts, make any API calls you need to do here
-        // Artificially delay for two seconds to simulate a slow loading
-        // experience. Please remove this if you copy and paste the code!
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (e) {
         console.warn(e);
       } finally {
-        // Tell the application to render
         SplashScreen.hideAsync();
       }
     }
@@ -39,13 +46,12 @@ export default function App() {
 
   return (
     <View style={{ flex: 1 }} onLayout={async () => {
-      // This is a temporary fix for the splash screen not hiding
-      // It ensures the splash screen hides after fonts are loaded
       await SplashScreen.hideAsync();
     }}>
       <AuthProvider>
         <NotificationProvider>
           <AppNavigator />
+          <NotificationHandler />{/* Render the NotificationHandler here */}
         </NotificationProvider>
       </AuthProvider>
     </View>

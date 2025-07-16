@@ -22,7 +22,8 @@
     "mongoose": "^8.16.0",
     "multer": "^2.0.1",
     "node-cron": "^4.2.0",
-    "streamifier": "^0.1.1"
+    "streamifier": "^0.1.1",
+    "expo-server-sdk": "^3.10.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

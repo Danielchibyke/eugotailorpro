@@ -21,6 +21,10 @@ const userSchema = mongoose.Schema(
             type: String,
             default: 'staff',
         },
+        expoPushToken: {
+            type: String,
+            required: false, // Not all users will have a push token
+        },
     },
     {
         timestamps: true, 
