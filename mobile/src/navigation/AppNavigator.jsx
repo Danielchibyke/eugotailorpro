@@ -62,6 +62,7 @@ const MainTabs = () => (
 
 import TopNavbar from '../components/TopNavbar';
 import { View } from 'react-native';
+import NotificationHandler from '../components/NotificationHandler'; // Import NotificationHandler
 
 const MainStack = () => (
     <View style={{ flex: 1 }}>
@@ -83,6 +84,7 @@ const AppNavigator = () => {
     return (
         <NavigationContainer>
             {user ? <MainStack /> : <AuthStack />}
+            <NotificationHandler />{/* Render NotificationHandler here */}
         </NavigationContainer>
     );
 };

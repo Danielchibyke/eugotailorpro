@@ -2,6 +2,8 @@ import asyncHandler from 'express-async-handler';
 import Transaction from '../models/Transaction.js';
 import Client from '../models/Client.js';
 import BalanceRecord from '../models/BalanceRecord.js';
+import User from '../models/User.js'; // Import User model
+import { sendPushNotification } from './notificationController.js'; // Import notification sender
 
 // ... (createTransaction, getTransactions, etc. - no changes needed there)
 const createTransaction = asyncHandler(async (req, res) => {
@@ -14,12 +16,14 @@ const createTransaction = asyncHandler(async (req, res) => {
     }
 
     // Validate if client exists if provided
+    let clientName = 'N/A';
     if (client) {
         const existingClient = await Client.findById(client);
         if (!existingClient) {
             res.status(404);
             throw new Error('Client not found. Cannot record transaction with an invalid client.');
         }
+        clientName = existingClient.name;
     }
 
     const transaction = await Transaction.create({
@@ -34,7 +38,44 @@ const createTransaction = asyncHandler(async (req, res) => {
         recordedBy: req.user._id, // User who recorded the transaction
     });
 
-    res.status(201).json(transaction);
+    if (transaction) {
+        const notificationTitle = 'New Transaction Recorded!';
+        const notificationBody = `${type} of ${amount} ${currency} for ${clientName} recorded by ${req.user.name}.`;
+        const notificationData = {
+            screen: 'CashBook',
+            id: transaction._id.toString(),
+        };
+
+        // Get all staff and admin users
+        const allRelevantUsers = await User.find({ role: { $in: ['staff', 'admin'] } });
+
+        for (const userToNotify of allRelevantUsers) {
+            // Only send notification if user has a push token and is not the current user
+            if (userToNotify.expoPushToken && userToNotify._id.toString() !== req.user._id.toString()) {
+                await sendPushNotification({
+                    expoPushToken: userToNotify.expoPushToken,
+                    title: notificationTitle,
+                    body: notificationBody,
+                    data: notificationData,
+                });
+            }
+        }
+
+        // Also send notification to the user who created the transaction (if they have a token)
+        if (req.user.expoPushToken) {
+            await sendPushNotification({
+                expoPushToken: req.user.expoPushToken,
+                title: notificationTitle,
+                body: notificationBody,
+                data: notificationData,
+            });
+        }
+
+        res.status(201).json(transaction);
+    } else {
+        res.status(400);
+        throw new Error('Invalid transaction data');
+    }
 });
 const getTransactions = asyncHandler(async (req, res) => {
     // Optionally filter by client, type, date range etc.

@@ -2,6 +2,8 @@
 import asyncHandler from 'express-async-handler';
 import Booking from '../models/Booking.js';
 import Client from '../models/Client.js'; // Needed to validate client existence
+import User from '../models/User.js'; // Needed to get other staff members' push tokens
+import { sendPushNotification } from './notificationController.js'; // Import the notification sender
 
 // @desc    Create a new booking
 // @route   POST /api/bookings
@@ -35,7 +37,44 @@ const createBooking = asyncHandler(async (req, res) => {
         reminderDate
     });
 
-    res.status(201).json(booking);
+    if (booking) {
+        const notificationTitle = 'New Booking Created!';
+        const notificationBody = `Booking for ${existingClient.name} on ${new Date(bookingDate).toLocaleDateString()} has been created.`;
+        const notificationData = {
+            screen: 'BookingDetail',
+            id: booking._id.toString(),
+        };
+
+        // Get all staff and admin users
+        const allRelevantUsers = await User.find({ role: { $in: ['staff', 'admin'] } });
+
+        for (const userToNotify of allRelevantUsers) {
+            // Only send notification if user has a push token and is not the current user (who gets a separate notification)
+            if (userToNotify.expoPushToken && userToNotify._id.toString() !== req.user._id.toString()) {
+                await sendPushNotification({
+                    expoPushToken: userToNotify.expoPushToken,
+                    title: notificationTitle,
+                    body: notificationBody,
+                    data: notificationData,
+                });
+            }
+        }
+
+        // Also send notification to the user who created the booking (if they have a token)
+        if (req.user.expoPushToken) {
+            await sendPushNotification({
+                expoPushToken: req.user.expoPushToken,
+                title: notificationTitle,
+                body: notificationBody,
+                data: notificationData,
+            });
+        }
+
+        res.status(201).json(booking);
+    } else {
+        res.status(400);
+        throw new Error('Invalid booking data');
+    }
 });
 
 // @desc    Get all bookings
@@ -87,7 +126,44 @@ const updateBooking = asyncHandler(async (req, res) => {
         booking.payment = payment || booking.payment;
 
         const updatedBooking = await booking.save();
-        res.json(updatedBooking);
+
+        if (updatedBooking) {
+            const notificationTitle = 'Booking Updated!';
+            const notificationBody = `Booking for ${existingClient.name} on ${new Date(updatedBooking.bookingDate).toLocaleDateString()} has been updated.`;
+            const notificationData = {
+                screen: 'BookingDetail',
+                id: updatedBooking._id.toString(),
+            };
+
+            // Get all staff and admin users
+            const allRelevantUsers = await User.find({ role: { $in: ['staff', 'admin'] } });
+
+            for (const userToNotify of allRelevantUsers) {
+                // Only send notification if user has a push token and is not the current user
+                if (userToNotify.expoPushToken && userToNotify._id.toString() !== req.user._id.toString()) {
+                    await sendPushNotification({
+                        expoPushToken: userToNotify.expoPushToken,
+                        title: notificationTitle,
+                        body: notificationBody,
+                        data: notificationData,
+                    });
+                }
+            }
+
+            // Also send notification to the user who updated the booking (if they have a token)
+            if (req.user.expoPushToken) {
+                await sendPushNotification({
+                    expoPushToken: req.user.expoPushToken,
+                    title: notificationTitle,
+                    body: notificationBody,
+                    data: notificationData,
+                });
+            }
+            res.json(updatedBooking);
+        } else {
+            res.status(400);
+            throw new Error('Invalid booking data');
+        }
     } else {
         res.status(404);
         throw new Error('Booking not found');

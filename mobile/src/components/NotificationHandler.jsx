@@ -1,44 +1,77 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import messaging from '@react-native-firebase/messaging';
 import { registerForPushNotificationsAsync } from '../utils/notificationService';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext'; // Import useNotification
 import api from '../utils/api';
+import { useNavigation } from '@react-navigation/native'; // Import useNavigation
 
 const NotificationHandler = () => {
   const { user } = useAuth();
-  const notificationListener = useRef();
-  const responseListener = useRef();
+  const { showNotification } = useNotification(); // Use the hook
+  const navigation = useNavigation(); // Get navigation object
 
   useEffect(() => {
+    console.log('NotificationHandler useEffect: user status', user ? 'defined' : 'undefined');
     if (user) {
       registerForPushNotificationsAsync().then(token => {
+        console.log('Generated FCM Push Token:', token);
         if (token) {
           // Send the token to your backend
-          api.post('/notifications/save-token', { expoPushToken: token, userId: user._id })
-            .then(res => console.log('Push token saved on server:', res.data))
-            .catch(err => console.error('Failed to save push token on server:', err));
+          api.post('/notifications/save-token', { expoPushToken: token, userId: user._id }) // Keep expoPushToken field name for now
+            .then(res => console.log('FCM token saved on server:', res.data))
+            .catch(err => console.error('Failed to save FCM token on server:', err.response?.data || err.message));
         }
       });
 
-      // This listener is fired whenever a notification is received while the app is foregrounded
-      notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-        console.log('Notification received:', notification);
-        // You can add logic here to display an in-app notification or update UI
+      // Handle foreground messages
+      const unsubscribeOnMessage = messaging().onMessage(async remoteMessage => {
+        console.log('FCM Message received in foreground:', remoteMessage);
+        // Display in-app notification
+        showNotification(remoteMessage.notification.title + ': ' + remoteMessage.notification.body);
       });
 
-      // This listener is fired whenever a user taps on or interacts with a notification (works when app is foregrounded, backgrounded, or killed)
-      responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-        console.log('Notification tapped:', response);
-        // You can add navigation logic here based on notification data
+      // Handle messages when the app is in the background or quit and opened by tapping a notification
+      const unsubscribeOnNotificationOpenedApp = messaging().onNotificationOpenedApp(remoteMessage => {
+        console.log('FCM Notification opened app from background state:', remoteMessage);
+        const { screen, id } = remoteMessage.data || {};
+        if (screen && navigation) {
+          const mainTabsScreens = ['Dashboard', 'Bookings', 'Clients', 'Financials'];
+          if (mainTabsScreens.includes(screen)) {
+            navigation.navigate('MainTabs', { screen: screen, params: { id } });
+          } else {
+            navigation.navigate(screen, { id });
+          }
+        } else if (navigation) {
+          navigation.navigate('MainTabs', { screen: 'Dashboard' });
+        }
+      });
+
+      // Check if app was opened from a quit state by a notification
+      messaging().getInitialNotification().then(remoteMessage => {
+        if (remoteMessage) {
+          console.log('FCM Notification opened app from quit state:', remoteMessage);
+          const { screen, id } = remoteMessage.data || {};
+          if (screen && navigation) {
+            const mainTabsScreens = ['Dashboard', 'Bookings', 'Clients', 'Financials'];
+            if (mainTabsScreens.includes(screen)) {
+              navigation.navigate('MainTabs', { screen: screen, params: { id } });
+            } else {
+              navigation.navigate(screen, { id });
+            }
+          } else if (navigation) {
+            navigation.navigate('MainTabs', { screen: 'Dashboard' });
+          }
+        }
       });
 
       return () => {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-        Notifications.removeNotificationSubscription(responseListener.current);
+        unsubscribeOnMessage();
+        unsubscribeOnNotificationOpenedApp();
       };
     }
-  }, [user]); // Run when user object changes (e.g., on login)
+  }, [user, showNotification, navigation]); // Add navigation to dependency array
 
   return null; // This component doesn't render any UI directly
 };

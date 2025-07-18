@@ -19,7 +19,7 @@ const LoginScreen = ({ navigation }) => {
             showNotification('Please enter both email and password.', 'error');
             return;
         }
-        console.log('Setting loading to true');
+        console.log('Setting loading to true ');
         setLoading(true);
        
         try {
@@ -71,6 +71,7 @@ const LoginScreen = ({ navigation }) => {
                 </TouchableOpacity>
             </View>
         </BackgroundContainer>
+
     );
 };
 

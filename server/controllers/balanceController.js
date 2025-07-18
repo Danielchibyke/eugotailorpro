@@ -1,6 +1,8 @@
 import asyncHandler from 'express-async-handler';
 import BalanceRecord from '../models/BalanceRecord.js';
 import Transaction from '../models/Transaction.js';
+import User from '../models/User.js'; // Import User model
+import { sendPushNotification } from './notificationController.js'; // Import notification sender
 
 // @desc    Set the last balanced date and balances
 // @route   POST /api/balances/setLastBalancedDate
@@ -22,7 +24,44 @@ const setLastBalancedDate = asyncHandler(async (req, res) => {
         recordedBy: req.user._id,
     });
 
-    res.status(201).json(balanceRecord);
+    if (balanceRecord) {
+        const notificationTitle = 'New Balance Record!';
+        const notificationBody = `New balance recorded by ${req.user.name} on ${new Date(date).toLocaleDateString()}. Cash: ${cashBalance}, Bank: ${bankBalance}.`;
+        const notificationData = {
+            screen: 'CashBook',
+            id: balanceRecord._id.toString(),
+        };
+
+        // Get all staff and admin users
+        const allRelevantUsers = await User.find({ role: { $in: ['staff', 'admin'] } });
+
+        for (const userToNotify of allRelevantUsers) {
+            // Only send notification if user has a push token and is not the current user
+            if (userToNotify.expoPushToken && userToNotify._id.toString() !== req.user._id.toString()) {
+                await sendPushNotification({
+                    expoPushToken: userToNotify.expoPushToken,
+                    title: notificationTitle,
+                    body: notificationBody,
+                    data: notificationData,
+                });
+            }
+        }
+
+        // Also send notification to the user who created the balance record (if they have a token)
+        if (req.user.expoPushToken) {
+            await sendPushNotification({
+                expoPushToken: req.user.expoPushToken,
+                title: notificationTitle,
+                body: notificationBody,
+                data: notificationData,
+            });
+        }
+
+        res.status(201).json(balanceRecord);
+    } else {
+        res.status(400);
+        throw new Error('Invalid balance record data');
+    }
 });
 
 // @desc    Get the latest balance record

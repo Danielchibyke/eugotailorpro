@@ -6,20 +6,8 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { View } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import NotificationHandler from './src/components/NotificationHandler'; // Import the new component
-
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
-
-// Set up notification handler for foreground notifications
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -51,7 +39,6 @@ export default function App() {
       <AuthProvider>
         <NotificationProvider>
           <AppNavigator />
-          <NotificationHandler />{/* Render the NotificationHandler here */}
         </NotificationProvider>
       </AuthProvider>
     </View>
