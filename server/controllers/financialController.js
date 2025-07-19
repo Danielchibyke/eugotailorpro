@@ -138,19 +138,42 @@ const getCashBookData = asyncHandler(async (req, res) => {
         throw new Error('Please provide both startDate and endDate.');
     }
 
-    const periodStartDate = new Date(startDate);
-    periodStartDate.setUTCHours(0, 0, 0, 0); // Set to the beginning of the day
+   
 
-    const periodEndDate = new Date(endDate);
-    periodEndDate.setUTCHours(23, 59, 59, 999); // Set to the end of the day
+ 
 
-    // Find the most recent balance record on or before the period starts.
-    const lastBalanceRecord = await BalanceRecord.findOne({
-        lastBalancedDate: { $lt: periodStartDate },
+    let openingCashBalance = 0;
+    let openingBankBalance = 0;
+    let lastBalancedDate = null;
+
+    // Find the most recent balance record that occurred ON or BEFORE the periodStartDate
+    const relevantBalanceRecord = await BalanceRecord.findOne({
+        lastBalancedDate: { $lte: periodStartDate },
     }).sort({ lastBalancedDate: -1 });
 
-    const openingCashBalance = lastBalanceRecord ? lastBalanceRecord.cashBalance : 0;
-    const openingBankBalance = lastBalanceRecord ? lastBalanceRecord.bankBalance : 0;
+    let calculationStartPoint = new Date(0); // Default to epoch start
+
+    if (relevantBalanceRecord) {
+        openingCashBalance = relevantBalanceRecord.cashBalance;
+        openingBankBalance = relevantBalanceRecord.bankBalance;
+        calculationStartPoint = relevantBalanceRecord.lastBalancedDate;
+        lastBalancedDate = relevantBalanceRecord.lastBalancedDate; // This is the last time a balance was explicitly set
+    }
+
+    // Sum transactions from the calculationStartPoint up to (but not including) the periodStartDate
+    const transactionsBeforePeriod = await Transaction.find({
+        date: { $gt: calculationStartPoint, $lt: periodStartDate },
+    });
+
+    transactionsBeforePeriod.forEach(transaction => {
+        if (transaction.type === 'Income') {
+            if (transaction.paymentMethod === 'Cash') openingCashBalance += transaction.amount;
+            else if (transaction.paymentMethod === 'Bank Transfer' || transaction.paymentMethod === 'Card') openingBankBalance += transaction.amount;
+        } else if (transaction.type === 'Expense') {
+            if (transaction.paymentMethod === 'Cash') openingCashBalance -= transaction.amount;
+            else if (transaction.paymentMethod === 'Bank Transfer' || transaction.paymentMethod === 'Card') openingBankBalance -= transaction.amount;
+        }
+    });
 
     // Get all transactions within the specified period.
     const entries = await Transaction.find({
@@ -163,6 +186,7 @@ const getCashBookData = asyncHandler(async (req, res) => {
         openingCashBalance,
         openingBankBalance,
         entries,
+        lastBalancedDate: lastBalancedDate,
     });
 });
 const deleteTransaction = asyncHandler(async (req, res) => {
@@ -184,4 +208,4 @@ export {
     updateTransaction,
     deleteTransaction,
     getCashBookData,
-};
+}

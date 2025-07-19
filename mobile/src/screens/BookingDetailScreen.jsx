@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
-
+import { useRealm, useObject } from '@realm/react';
 import BackgroundContainer from '../components/BackgroundContainer';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { useNotification } from '../context/NotificationContext';
@@ -19,23 +19,93 @@ import { theme } from '../styles/theme';
 
 const BookingDetailScreen = ({ route, navigation }) => {
     const { bookingId } = route.params;
-    const [booking, setBooking] = useState(null);
+    const realm = useRealm();
+    const booking = useObject('Booking', new Realm.BSON.ObjectId(bookingId));
     const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
 
     const fetchBookingDetails = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
             const { data } = await api.get(`/bookings/${bookingId}`);
-            setBooking(data);
+
+            realm.write(() => {
+                // Ensure client exists in Realm or create/update it
+                let clientRealmObject = realm.objects('Client').filtered('_id == $0', new Realm.BSON.ObjectId(data.client._id))[0];
+                if (!clientRealmObject) {
+                    clientRealmObject = realm.create('Client', {
+                        _id: new Realm.BSON.ObjectId(data.client._id),
+                        name: data.client.name,
+                        email: data.client.email || null,
+                        phone: data.client.phone,
+                        address: data.client.address || null,
+                        notes: data.client.notes || null,
+                        createdBy: new Realm.BSON.ObjectId(data.client.createdBy),
+                        measurement: data.client.measurement ? {
+                            chest: data.client.measurement.chest || [0, 0],
+                            waist: data.client.measurement.waist || 0,
+                            roundsleeve: data.client.measurement.roundsleeve || [0, 0, 0],
+                            shoulder: data.client.measurement.shoulder || 0,
+                            toplength: data.client.measurement.toplength || 0,
+                            trouserlength: data.client.measurement.trouserlength || 0,
+                            thigh: data.client.measurement.thigh || 0,
+                            knee: data.client.measurement.knee || 0,
+                            ankle: data.client.measurement.ankle || 0,
+                            neck: data.client.measurement.neck || 0,
+                            sleeveLength: data.client.measurement.sleeveLength || [0, 0, 0],
+                        } : {},
+                        createdAt: new Date(data.client.createdAt),
+                        updatedAt: new Date(data.client.updatedAt),
+                    }, Realm.UpdateMode.Modified);
+                } else {
+                    // Update existing client properties
+                    clientRealmObject.name = data.client.name;
+                    clientRealmObject.email = data.client.email || null;
+                    clientRealmObject.phone = data.client.phone;
+                    clientRealmObject.address = data.client.address || null;
+                    clientRealmObject.notes = data.client.notes || null;
+                    clientRealmObject.measurement = data.client.measurement ? {
+                        chest: data.client.measurement.chest || [0, 0],
+                        waist: data.client.measurement.waist || 0,
+                        roundsleeve: data.client.measurement.roundsleeve || [0, 0, 0],
+                        shoulder: data.client.measurement.shoulder || 0,
+                        toplength: data.client.measurement.toplength || 0,
+                        trouserlength: data.client.measurement.trouserlength || 0,
+                        thigh: data.client.measurement.thigh || 0,
+                        knee: data.client.measurement.knee || 0,
+                        ankle: data.client.measurement.ankle || 0,
+                        neck: data.client.measurement.neck || 0,
+                        sleeveLength: data.client.measurement.sleeveLength || [0, 0, 0],
+                    } : {};
+                    clientRealmObject.updatedAt = new Date(data.client.updatedAt);
+                }
+
+                // Update booking data in Realm
+                if (booking) {
+                    booking.client = clientRealmObject;
+                    booking.bookingDate = new Date(data.bookingDate);
+                    booking.deliveryDate = new Date(data.deliveryDate);
+                    booking.status = data.status;
+                    booking.items = data.items || [];
+                    booking.totalAmount = data.totalAmount;
+                    booking.amountPaid = data.amountPaid;
+                    booking.balanceDue = data.balanceDue;
+                    booking.notes = data.notes || null;
+                    booking.createdBy = new Realm.BSON.ObjectId(data.createdBy);
+                    booking.updatedAt = new Date(data.updatedAt);
+                }
+            });
+            showNotification('Booking details synced successfully!', 'success');
         } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to fetch booking details.', 'error');
+            console.error('Failed to fetch booking details from API:', err);
+            showNotification(err.response?.data?.msg || 'Failed to fetch booking details. Displaying cached data.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [bookingId, showNotification]);
+    }, [bookingId, showNotification, realm, booking]);
 
     useEffect(() => {
+        // Initial load is handled by useObject, but we still want to fetch fresh data on focus
         const unsubscribe = navigation.addListener('focus', fetchBookingDetails);
         return unsubscribe;
     }, [navigation, fetchBookingDetails]);
@@ -50,9 +120,13 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     text: "Complete",
                     onPress: async () => {
                         try {
-                            const updatedBooking = { ...booking, status: 'Completed' };
-                            const { data } = await api.put(`/bookings/${booking._id}`, updatedBooking);
-                            setBooking(data);
+                            const updatedBooking = { ...booking.toJSON(), status: 'Completed' };
+                            const { data } = await api.put(`/bookings/${booking._id.toHexString()}`, updatedBooking);
+                            // Update Realm object directly
+                            realm.write(() => {
+                                booking.status = data.status;
+                                booking.updatedAt = new Date(data.updatedAt);
+                            });
                             showNotification('Booking marked as completed!', 'success');
                         } catch (err) {
                             showNotification(err.response?.data?.msg || "Failed to update status.", 'error');
@@ -74,7 +148,7 @@ const BookingDetailScreen = ({ route, navigation }) => {
         }
     };
 
-    if (loading || !booking) {
+    if (loading && !booking) {
         return (
             <BackgroundContainer>
                 <View style={styles.loadingContainer}>
@@ -85,8 +159,18 @@ const BookingDetailScreen = ({ route, navigation }) => {
         );
     }
 
-    const { client, service, deliveryDate, status, price = 0, payment = 0, notes } = booking;
-    const amountRemaining = price - payment;
+    if (!booking) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>Booking not found.</Text>
+                </View>
+            </BackgroundContainer>
+        );
+    }
+
+    const { client, bookingDate, deliveryDate, status, totalAmount = 0, amountPaid = 0, notes } = booking;
+    const amountRemaining = totalAmount - amountPaid;
 
     return (
         <BackgroundContainer>
@@ -95,7 +179,7 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     <Text style={styles.headerTitle}>Booking Details</Text>
                     <TouchableOpacity
                         style={styles.editButton}
-                        onPress={() => navigation.navigate('AddBooking', { booking: booking })}
+                        onPress={() => navigation.navigate('AddBooking', { booking: booking.toJSON() })}
                     >
                         <Ionicons name="create-outline" size={24} color={theme.COLORS.textLight} />
                         <Text style={styles.editButtonText}>Edit</Text>
@@ -104,19 +188,19 @@ const BookingDetailScreen = ({ route, navigation }) => {
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Client Information</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('ClientDetail', { clientId: client._id })}>
+                    <TouchableOpacity onPress={() => navigation.navigate('ClientDetail', { clientId: client._id.toHexString() })}>
                         <Text style={styles.clientName}>{client.name}</Text>
                     </TouchableOpacity>
                     <Text style={styles.detailText}>{client.phone}</Text>
                     {client.email && <Text style={styles.detailText}>{client.email}</Text>}
                 </View>
 
-                {client.measurements && Object.keys(client.measurements).length > 0 && (
+                {client.measurement && Object.keys(client.measurement).length > 0 && (
                     <CollapsibleSection title="Client Measurements">
-                        {Object.entries(client.measurements).map(([key, value]) => (
+                        {Object.entries(client.measurement).map(([key, value]) => (
                             <View style={styles.detailRow} key={key}>
                                 <Text style={styles.detailLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
-                                <Text style={styles.detailValue}>{value}</Text>
+                                <Text style={styles.detailValue}>{Array.isArray(value) ? value.join(', ') : value}</Text>
                             </View>
                         ))}
                     </CollapsibleSection>
@@ -125,16 +209,20 @@ const BookingDetailScreen = ({ route, navigation }) => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Booking Details</Text>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Service</Text>
-                        <Text style={styles.detailValue}>{service}</Text>
+                        <Text style={styles.detailLabel}>Booking Date</Text>
+                        <Text style={styles.detailValue}>{dayjs(bookingDate).format('MMM D, YYYY')}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Delivery Date</Text>
+                        <Text style={styles.detailValue}>{dayjs(deliveryDate).format('MMM D, YYYY')}</Text>
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Status</Text>
                         <Text style={[styles.detailValue, getStatusStyle(status)]}>{status}</Text>
                     </View>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Delivery Date</Text>
-                        <Text style={styles.detailValue}>{dayjs(deliveryDate).format('MMM D, YYYY')}</Text>
+                        <Text style={styles.detailLabel}>Items</Text>
+                        <Text style={styles.detailValue}>{booking.items.join(', ')}</Text>
                     </View>
                     {notes && (
                         <View style={styles.notesSection}>
@@ -148,11 +236,11 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     <Text style={styles.sectionTitle}>Financials</Text>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Total Amount</Text>
-                        <Text style={styles.financialValue}>₦{price.toFixed(2)}</Text>
+                        <Text style={styles.financialValue}>₦{totalAmount.toFixed(2)}</Text>
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Amount Paid</Text>
-                        <Text style={[styles.financialValue, { color: theme.COLORS.success }]}>₦{payment.toFixed(2)}</Text>
+                        <Text style={[styles.financialValue, { color: theme.COLORS.success }]}>₦{amountPaid.toFixed(2)}</Text>
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Amount Remaining</Text>

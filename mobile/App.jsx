@@ -6,6 +6,10 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { View } from 'react-native';
+import { RealmProvider } from '@realm/react';
+import { ClientSchema } from './src/models/ClientSchema';
+import { BookingSchema } from './src/models/BookingSchema';
+
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
@@ -36,11 +40,13 @@ export default function App() {
     <View style={{ flex: 1 }} onLayout={async () => {
       await SplashScreen.hideAsync();
     }}>
-      <AuthProvider>
-        <NotificationProvider>
-          <AppNavigator />
-        </NotificationProvider>
-      </AuthProvider>
+      <RealmProvider schemas={[ClientSchema, BookingSchema]}>
+        <AuthProvider>
+          <NotificationProvider>
+            <AppNavigator />
+          </NotificationProvider>
+        </AuthProvider>
+      </RealmProvider>
     </View>
   );
 }

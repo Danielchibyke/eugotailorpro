@@ -112,10 +112,21 @@ const getBookingById = asyncHandler(async (req, res) => {
 const updateBooking = asyncHandler(async (req, res) => {
     const { client, bookingDate, status, notes, deliveryDate, design, price, payment, reminderDate } = req.body;
 
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findById(req.params.id).populate('client', 'name'); // Populate client to get name
 
     if (booking) {
-        booking.client = client || booking.client;
+        let clientName = booking.client ? booking.client.name : 'N/A';
+
+        if (client) {
+            const newClient = await Client.findById(client);
+            if (!newClient) {
+                res.status(404);
+                throw new Error('Client not found. Cannot update booking with an invalid client.');
+            }
+            booking.client = client;
+            clientName = newClient.name;
+        }
+
         booking.bookingDate = bookingDate || booking.bookingDate;
         booking.deliveryDate = deliveryDate || booking.deliveryDate;
         booking.status = status || booking.status;
@@ -129,7 +140,7 @@ const updateBooking = asyncHandler(async (req, res) => {
 
         if (updatedBooking) {
             const notificationTitle = 'Booking Updated!';
-            const notificationBody = `Booking for ${existingClient.name} on ${new Date(updatedBooking.bookingDate).toLocaleDateString()} has been updated.`;
+            const notificationBody = `Booking for ${clientName} on ${new Date(updatedBooking.bookingDate).toLocaleDateString()} has been updated.`;
             const notificationData = {
                 screen: 'BookingDetail',
                 id: updatedBooking._id.toString(),

@@ -193,7 +193,7 @@ const AddClientScreen = ({ navigation, route }) => {
                     />
                 </View>
 
-                <CollapsibleSection title="Measurements (Optional)">
+                <CollapsibleSection title="Measurements">
                     <MeasurementInput label="Neck (N)" value={formData.measurement.neck} onChange={(v) => handleMeasurementChange('neck', v)} />
                     <MeasurementInput label="Shoulder (SH)" value={formData.measurement.shoulder} onChange={(v) => handleMeasurementChange('shoulder', v)} />
                     <MeasurementInput label="Chest (CH)" value={formData.measurement.chest} onChange={(v, i) => handleMeasurementChange('chest', v, i)} />

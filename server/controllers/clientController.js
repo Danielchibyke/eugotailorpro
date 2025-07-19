@@ -1,6 +1,7 @@
 // server/controllers/clientController.js
 import asyncHandler from 'express-async-handler';
 import Client from '../models/Client.js';
+import Booking from '../models/Booking.js'; // Import Booking model
 
 // @desc    Create a new client
 // @route   POST /api/clients
@@ -44,8 +45,30 @@ const createClient = asyncHandler(async (req, res) => {
 // @route   GET /api/clients
 // @access  Private (Admin/Staff)
 const getClients = asyncHandler(async (req, res) => {
-    // Optionally filter clients created by the current user, or allow all for admins
-    const clients = await Client.find({}).populate('createdBy', 'name email'); // Populate creator info
+    const clients = await Client.aggregate([
+        {
+            $lookup: {
+                from: 'bookings', // The name of the bookings collection
+                localField: '_id',
+                foreignField: 'client',
+                as: 'bookings',
+            },
+        },
+        {
+            $addFields: {
+                totalBookings: { $size: '$bookings' },
+            },
+        },
+        {
+            $project: {
+                bookings: 0, // Exclude the actual bookings array if not needed on the frontend
+            },
+        },
+    ]);
+
+    // If you still need to populate 'createdBy', you'll need to do it after aggregation
+    // or adjust the aggregation pipeline to include it.
+    // For now, we'll just return the clients with totalBookings.
     res.json(clients);
 });
 

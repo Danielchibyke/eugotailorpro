@@ -10,7 +10,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import { useRealm, useQuery } from '@realm/react';
 import BackgroundContainer from '../components/BackgroundContainer';
 import ClientCard from '../components/ClientCard';
 import { useNotification } from '../context/NotificationContext';
@@ -18,41 +18,77 @@ import api from '../utils/api';
 import { theme } from '../styles/theme';
 
 const ClientsScreen = ({ navigation }) => {
-    const [clients, setClients] = useState([]);
+    const realm = useRealm();
+    const clientsFromRealm = useQuery('Client');
     const [filteredClients, setFilteredClients] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
 
     const fetchClients = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
             const { data } = await api.get('/clients');
-            setClients(data);
-            setFilteredClients(data);
+            realm.write(() => {
+                // Clear existing clients and add fresh data
+                realm.delete(clientsFromRealm);
+                data.forEach(clientData => {
+                    realm.create('Client', {
+                        _id: new Realm.BSON.ObjectId(clientData._id),
+                        name: clientData.name,
+                        email: clientData.email,
+                        phone: clientData.phone,
+                        address: clientData.address,
+                        notes: clientData.notes,
+                        createdBy: new Realm.BSON.ObjectId(clientData.createdBy),
+                        measurement: clientData.measurement ? {
+                            chest: clientData.measurement.chest || [0, 0],
+                            waist: clientData.measurement.waist || 0,
+                            roundsleeve: clientData.measurement.roundsleeve || [0, 0, 0],
+                            shoulder: clientData.measurement.shoulder || 0,
+                            toplength: clientData.measurement.toplength || 0,
+                            trouserlength: clientData.measurement.trouserlength || 0,
+                            thigh: clientData.measurement.thigh || 0,
+                            knee: clientData.measurement.knee || 0,
+                            ankle: clientData.measurement.ankle || 0,
+                            neck: clientData.measurement.neck || 0,
+                            sleeveLength: clientData.measurement.sleeveLength || [0, 0, 0],
+                        } : {},
+                        createdAt: new Date(clientData.createdAt),
+                        updatedAt: new Date(clientData.updatedAt),
+                    });
+                });
+            });
+            showNotification('Clients synced successfully!', 'success');
         } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to fetch clients.', 'error');
+            console.error('Failed to fetch clients from API:', err);
+            showNotification(err.response?.data?.msg || 'Failed to fetch clients. Displaying cached data.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [showNotification]);
+    }, [realm, showNotification, clientsFromRealm]);
 
     useEffect(() => {
+        // Initial load from Realm
+        setFilteredClients(clientsFromRealm.sorted('name'));
+        setLoading(false);
+
+        // Listen for focus to refresh data from API
         const unsubscribe = navigation.addListener('focus', fetchClients);
         return unsubscribe;
-    }, [navigation, fetchClients]);
+    }, [navigation, fetchClients, clientsFromRealm]);
 
-    const handleSearch = (query) => {
-        setSearchQuery(query);
-        if (query) {
-            const filtered = clients.filter((client) =>
-                client.name.toLowerCase().includes(query.toLowerCase())
+    useEffect(() => {
+        // Update filtered clients when Realm data changes or search query changes
+        if (searchQuery) {
+            const filtered = clientsFromRealm.filter((client) =>
+                client.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
-            setFilteredClients(filtered);
+            setFilteredClients(filtered.sorted('name'));
         } else {
-            setFilteredClients(clients);
+            setFilteredClients(clientsFromRealm.sorted('name'));
         }
-    };
+    }, [searchQuery, clientsFromRealm]);
 
     const handleDeleteClient = (clientId) => {
         Alert.alert(
@@ -64,9 +100,14 @@ const ClientsScreen = ({ navigation }) => {
                     text: 'Delete',
                     onPress: async () => {
                         try {
+                            // Attempt to delete from API first
                             await api.delete(`/clients/${clientId}`);
+                            // If successful, delete from Realm
+                            realm.write(() => {
+                                const clientToDelete = realm.objects('Client').filtered('_id == $0', new Realm.BSON.ObjectId(clientId));
+                                realm.delete(clientToDelete);
+                            });
                             showNotification('Client deleted successfully!', 'success');
-                            fetchClients(); // Refresh the list
                         } catch (err) {
                             showNotification(err.response?.data?.msg || 'Failed to delete client.', 'error');
                         }
@@ -83,7 +124,7 @@ const ClientsScreen = ({ navigation }) => {
                 <Text style={styles.headerTitle}>Client Management</Text>
                 <View style={styles.balanceContainer}>
                     <Text style={styles.balanceLabel}>Total Clients</Text>
-                    <Text style={styles.balanceValue}>{clients.length}</Text>
+                    <Text style={styles.balanceValue}>{clientsFromRealm.length}</Text>
                 </View>
             </View>
             <View style={styles.searchContainer}>
@@ -99,7 +140,7 @@ const ClientsScreen = ({ navigation }) => {
         </>
     );
 
-    if (loading) {
+    if (loading && clientsFromRealm.length === 0) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.COLORS.primary} />
@@ -114,12 +155,12 @@ const ClientsScreen = ({ navigation }) => {
                 renderItem={({ item }) => (
                     <ClientCard
                         client={item}
-                        onView={() => navigation.navigate('ClientDetail', { clientId: item._id })}
-                        onEdit={() => navigation.navigate('AddClient', { client: item })}
-                        onDelete={() => handleDeleteClient(item._id)}
+                        onView={() => navigation.navigate('ClientDetail', { clientId: item._id.toHexString() })}
+                        onEdit={() => navigation.navigate('AddClient', { client: item.toJSON() })}
+                        onDelete={() => handleDeleteClient(item._id.toHexString())}
                     />
                 )}
-                keyExtractor={(item) => item._id}
+                keyExtractor={(item) => item._id.toHexString()}
                 ListHeaderComponent={renderHeader}
                 contentContainerStyle={styles.list}
                 ListEmptyComponent={

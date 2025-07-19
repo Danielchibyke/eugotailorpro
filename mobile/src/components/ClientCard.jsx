@@ -4,8 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 
 const ClientCard = ({ client, onView, onEdit, onDelete }) => {
-    const { name, phone, bookings } = client;
-    const totalBookings = bookings?.length || 0;
+    const { name, phone, totalBookings } = client;
 
     return (
         <TouchableOpacity style={styles.card} onPress={onView}>

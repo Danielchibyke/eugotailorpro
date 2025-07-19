@@ -9,7 +9,7 @@ import {
     FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import { useRealm, useObject } from '@realm/react';
 import BackgroundContainer from '../components/BackgroundContainer';
 import CollapsibleSection from '../components/CollapsibleSection';
 import BookingCard from '../components/BookingCard'; // Re-use the BookingCard component
@@ -19,31 +19,96 @@ import { theme } from '../styles/theme';
 
 const ClientDetailScreen = ({ route, navigation }) => {
     const { clientId } = route.params;
-    const [client, setClient] = useState(null);
-    const [bookings, setBookings] = useState([]);
+    const realm = useRealm();
+    const client = useObject('Client', new Realm.BSON.ObjectId(clientId));
     const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
 
     const fetchClientData = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
             const [clientRes, bookingsRes] = await Promise.all([
                 api.get(`/clients/${clientId}`),
                 api.get(`/bookings?client=${clientId}`), // Assuming the API supports filtering bookings by client
             ]);
-            setClient(clientRes.data);
-            setBookings(bookingsRes.data);
+
+            realm.write(() => {
+                // Update client data in Realm
+                if (client) {
+                    client.name = clientRes.data.name;
+                    client.email = clientRes.data.email || null;
+                    client.phone = clientRes.data.phone;
+                    client.address = clientRes.data.address || null;
+                    client.notes = clientRes.data.notes || null;
+                    client.measurement = clientRes.data.measurement ? {
+                        chest: clientRes.data.measurement.chest || [0, 0],
+                        waist: clientRes.data.measurement.waist || 0,
+                        roundsleeve: clientRes.data.measurement.roundsleeve || [0, 0, 0],
+                        shoulder: clientRes.data.measurement.shoulder || 0,
+                        toplength: clientRes.data.measurement.toplength || 0,
+                        trouserlength: clientRes.data.measurement.trouserlength || 0,
+                        thigh: clientRes.data.measurement.thigh || 0,
+                        knee: clientRes.data.measurement.knee || 0,
+                        ankle: clientRes.data.measurement.ankle || 0,
+                        neck: clientRes.data.measurement.neck || 0,
+                        sleeveLength: clientRes.data.measurement.sleeveLength || [0, 0, 0],
+                    } : {};
+                    client.updatedAt = new Date(clientRes.data.updatedAt);
+                }
+
+                // Clear existing bookings for this client and add fresh data
+                const existingBookingsForClient = realm.objects('Booking').filtered('client._id == $0', new Realm.BSON.ObjectId(clientId));
+                realm.delete(existingBookingsForClient);
+
+                bookingsRes.data.forEach(bookingData => {
+                    // Ensure client exists in Realm or create it (should already exist from client fetch, but good to be safe)
+                    let clientRealmObject = realm.objects('Client').filtered('_id == $0', new Realm.BSON.ObjectId(bookingData.client._id))[0];
+                    if (!clientRealmObject) {
+                        // This case should ideally not happen if client fetch was successful
+                        clientRealmObject = realm.create('Client', {
+                            _id: new Realm.BSON.ObjectId(bookingData.client._id),
+                            name: bookingData.client.name,
+                            phone: bookingData.client.phone,
+                            createdBy: new Realm.BSON.ObjectId(bookingData.client.createdBy),
+                            createdAt: new Date(bookingData.client.createdAt),
+                            updatedAt: new Date(bookingData.client.updatedAt),
+                        }, Realm.UpdateMode.Modified);
+                    }
+
+                    realm.create('Booking', {
+                        _id: new Realm.BSON.ObjectId(bookingData._id),
+                        client: clientRealmObject,
+                        bookingDate: new Date(bookingData.bookingDate),
+                        deliveryDate: new Date(bookingData.deliveryDate),
+                        status: bookingData.status,
+                        items: bookingData.items || [],
+                        totalAmount: bookingData.totalAmount,
+                        amountPaid: bookingData.amountPaid,
+                        balanceDue: bookingData.balanceDue,
+                        notes: bookingData.notes || null,
+                        createdBy: new Realm.BSON.ObjectId(bookingData.createdBy),
+                        createdAt: new Date(bookingData.createdAt),
+                        updatedAt: new Date(bookingData.updatedAt),
+                    }, Realm.UpdateMode.Modified);
+                });
+            });
+            showNotification('Client and bookings synced successfully!', 'success');
         } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to fetch client data.', 'error');
+            console.error('Failed to fetch client data from API:', err);
+            showNotification(err.response?.data?.msg || 'Failed to fetch client data. Displaying cached data.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [clientId, showNotification]);
+    }, [clientId, showNotification, realm, client]);
 
     useEffect(() => {
+        // Initial load is handled by useObject, but we still want to fetch fresh data on focus
         const unsubscribe = navigation.addListener('focus', fetchClientData);
         return unsubscribe;
     }, [navigation, fetchClientData]);
+
+    // Get bookings for this client from Realm
+    const bookingsForClient = realm.objects('Booking').filtered('client._id == $0', new Realm.BSON.ObjectId(clientId)).sorted('bookingDate', true);
 
     const renderDetailItem = (icon, label, value) => (
         <View style={styles.detailItem}>
@@ -53,12 +118,22 @@ const ClientDetailScreen = ({ route, navigation }) => {
         </View>
     );
 
-    if (loading || !client) {
+    if (loading && !client) {
         return (
             <BackgroundContainer>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.COLORS.primary} />
                     <Text style={styles.loadingText}>Loading client details...</Text>
+                </View>
+            </BackgroundContainer>
+        );
+    }
+
+    if (!client) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>Client not found.</Text>
                 </View>
             </BackgroundContainer>
         );
@@ -74,7 +149,7 @@ const ClientDetailScreen = ({ route, navigation }) => {
                     <Text style={styles.headerName}>{client.name}</Text>
                     <TouchableOpacity
                         style={styles.editButton}
-                        onPress={() => navigation.navigate('AddClient', { client: client })}
+                        onPress={() => navigation.navigate('AddClient', { client: client.toJSON() })}
                     >
                         <Ionicons name="create-outline" size={20} color={theme.COLORS.textLight} />
                         <Text style={styles.editButtonText}>Edit</Text>
@@ -102,17 +177,17 @@ const ClientDetailScreen = ({ route, navigation }) => {
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Booking History</Text>
-                    {bookings.length > 0 ? (
+                    {bookingsForClient.length > 0 ? (
                         <FlatList
-                            data={bookings}
+                            data={bookingsForClient}
                             renderItem={({ item }) => (
                                 <BookingCard
                                     booking={item}
-                                    onView={() => navigation.navigate('BookingDetail', { bookingId: item._id })}
+                                    onView={() => navigation.navigate('BookingDetail', { bookingId: item._id.toHexString() })}
                                     // Pass other handlers if needed, or disable them
                                 />
                             )}
-                            keyExtractor={(item) => item._id}
+                            keyExtractor={(item) => item._id.toHexString()}
                             scrollEnabled={false} // To prevent nested scroll views issues
                         />
                     ) : (
@@ -183,7 +258,7 @@ const styles = StyleSheet.create({
         borderRadius: theme.BORDERRADIUS.md,
         padding: theme.SPACING.md,
         marginHorizontal: theme.SPACING.md,
-        marginTop: -50, // Overlap header
+        marginTop: 20, 
         marginBottom: theme.SPACING.md,
     },
     sectionTitle: {

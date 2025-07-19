@@ -9,7 +9,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import { useRealm, useQuery } from '@realm/react';
 import BackgroundContainer from '../components/BackgroundContainer';
 import BookingCard from '../components/BookingCard';
 import { useNotification } from '../context/NotificationContext';
@@ -17,30 +17,85 @@ import api from '../utils/api';
 import { theme } from '../styles/theme';
 
 const BookingsScreen = ({ navigation }) => {
-    const [bookings, setBookings] = useState([]);
+    const realm = useRealm();
+    const bookingsFromRealm = useQuery('Booking');
     const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
 
     const fetchBookings = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
             const { data } = await api.get('/bookings');
-            // Sort bookings by creation date, newest first
-            setBookings(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+            realm.write(() => {
+                // Clear existing bookings and add fresh data
+                realm.delete(bookingsFromRealm);
+                data.forEach(bookingData => {
+                    // Ensure client exists in Realm or create it
+                    let clientRealmObject = realm.objects('Client').filtered('_id == $0', new Realm.BSON.ObjectId(bookingData.client._id))[0];
+                    if (!clientRealmObject) {
+                        clientRealmObject = realm.create('Client', {
+                            _id: new Realm.BSON.ObjectId(bookingData.client._id),
+                            name: bookingData.client.name,
+                            email: bookingData.client.email || null,
+                            phone: bookingData.client.phone,
+                            address: bookingData.client.address || null,
+                            notes: bookingData.client.notes || null,
+                            createdBy: new Realm.BSON.ObjectId(bookingData.client.createdBy),
+                            measurement: bookingData.client.measurement ? {
+                                chest: bookingData.client.measurement.chest || [0, 0],
+                                waist: bookingData.client.measurement.waist || 0,
+                                roundsleeve: bookingData.client.measurement.roundsleeve || [0, 0, 0],
+                                shoulder: bookingData.client.measurement.shoulder || 0,
+                                toplength: bookingData.client.measurement.toplength || 0,
+                                trouserlength: bookingData.client.measurement.trouserlength || 0,
+                                thigh: bookingData.client.measurement.thigh || 0,
+                                knee: bookingData.client.measurement.knee || 0,
+                                ankle: bookingData.client.measurement.ankle || 0,
+                                neck: bookingData.client.measurement.neck || 0,
+                                sleeveLength: bookingData.client.measurement.sleeveLength || [0, 0, 0],
+                            } : {},
+                            createdAt: new Date(bookingData.client.createdAt),
+                            updatedAt: new Date(bookingData.client.updatedAt),
+                        }, Realm.UpdateMode.Modified);
+                    }
+
+                    realm.create('Booking', {
+                        _id: new Realm.BSON.ObjectId(bookingData._id),
+                        client: clientRealmObject,
+                        bookingDate: new Date(bookingData.bookingDate),
+                        deliveryDate: new Date(bookingData.deliveryDate),
+                        status: bookingData.status,
+                        items: bookingData.items || [],
+                        totalAmount: bookingData.totalAmount,
+                        amountPaid: bookingData.amountPaid,
+                        balanceDue: bookingData.balanceDue,
+                        notes: bookingData.notes || null,
+                        createdBy: new Realm.BSON.ObjectId(bookingData.createdBy),
+                        createdAt: new Date(bookingData.createdAt),
+                        updatedAt: new Date(bookingData.updatedAt),
+                    });
+                });
+            });
+            showNotification('Bookings synced successfully!', 'success');
         } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to fetch bookings.', 'error');
+            console.error('Failed to fetch bookings from API:', err);
+            showNotification(err.response?.data?.msg || 'Failed to fetch bookings. Displaying cached data.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [showNotification]);
+    }, [realm, showNotification, bookingsFromRealm]);
 
     useEffect(() => {
+        // Initial load from Realm
+        setLoading(false);
+
+        // Listen for focus to refresh data from API
         const unsubscribe = navigation.addListener('focus', fetchBookings);
         return unsubscribe;
     }, [navigation, fetchBookings]);
 
     const handleEditBooking = (booking) => {
-        navigation.navigate('AddBooking', { booking: booking });
+        navigation.navigate('AddBooking', { booking: booking.toJSON() });
     };
 
     const handleDeleteBooking = (bookingId) => {
@@ -54,7 +109,10 @@ const BookingsScreen = ({ navigation }) => {
                     onPress: async () => {
                         try {
                             await api.delete(`/bookings/${bookingId}`);
-                            setBookings(bookings.filter(b => b._id !== bookingId));
+                            realm.write(() => {
+                                const bookingToDelete = realm.objects('Booking').filtered('_id == $0', new Realm.BSON.ObjectId(bookingId));
+                                realm.delete(bookingToDelete);
+                            });
                             showNotification('Booking deleted successfully!', 'success');
                         } catch (err) {
                             showNotification(err.response?.data?.msg || "Failed to delete booking.", 'error');
@@ -68,18 +126,22 @@ const BookingsScreen = ({ navigation }) => {
 
     const handleCompleteBooking = async (booking) => {
         try {
-            const updatedBooking = { ...booking, status: 'Completed' };
-            const { data } = await api.put(`/bookings/${booking._id}`, updatedBooking);
-            setBookings(bookings.map(b => (b._id === booking._id ? data : b)));
+            const updatedBooking = { ...booking.toJSON(), status: 'Completed' };
+            const { data } = await api.put(`/bookings/${booking._id.toHexString()}`, updatedBooking);
+            // Update Realm object directly
+            realm.write(() => {
+                booking.status = data.status;
+                booking.updatedAt = new Date(data.updatedAt);
+            });
             showNotification('Booking marked as completed!', 'success');
         } catch (err) {
             showNotification(err.response?.data?.msg || "Failed to update booking status.", 'error');
         }
     };
 
-    const totalBookings = bookings.length;
-    const pendingBookings = bookings.filter(b => b.status === 'Pending').length;
-    const completedBookings = bookings.filter(b => b.status === 'Completed').length;
+    const totalBookings = bookingsFromRealm.length;
+    const pendingBookings = bookingsFromRealm.filter(b => b.status === 'Pending').length;
+    const completedBookings = bookingsFromRealm.filter(b => b.status === 'Completed').length;
 
     const renderHeader = () => (
         <View style={styles.headerContainer}>
@@ -101,7 +163,7 @@ const BookingsScreen = ({ navigation }) => {
         </View>
     );
 
-    if (loading) {
+    if (loading && bookingsFromRealm.length === 0) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.COLORS.primary} />
@@ -112,17 +174,17 @@ const BookingsScreen = ({ navigation }) => {
     return (
         <BackgroundContainer>
             <FlatList
-                data={bookings}
+                data={bookingsFromRealm.sorted('createdAt', true)} // Sort by createdAt, newest first
                 renderItem={({ item }) => (
                     <BookingCard
                         booking={item}
-                        onView={() => navigation.navigate('BookingDetail', { bookingId: item._id })}
+                        onView={() => navigation.navigate('BookingDetail', { bookingId: item._id.toHexString() })}
                         onEdit={() => handleEditBooking(item)}
-                        onDelete={() => handleDeleteBooking(item._id)}
+                        onDelete={() => handleDeleteBooking(item._id.toHexString())}
                         onComplete={() => handleCompleteBooking(item)}
                     />
                 )}
-                keyExtractor={(item) => item._id}
+                keyExtractor={(item) => item._id.toHexString()}
                 ListHeaderComponent={renderHeader}
                 contentContainerStyle={styles.list}
                 ListEmptyComponent={

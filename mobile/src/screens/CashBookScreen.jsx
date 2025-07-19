@@ -58,8 +58,104 @@ const CashBookScreen = () => {
 
   // Process data into cashbook format
   const processCashBookData = (balances, transactions) => {
-    // Your existing processing logic here
-    // Return { rows: [], lastBalancedDate: Date, finalBalance: { cash, bank } }
+    let rows = [];
+    let currentCashBalance = 0;
+    let currentBankBalance = 0;
+    let lastBalancedDate = null;
+
+    // Find the latest balance record to set the initial opening balance
+    const latestBalanceRecord = balances.sort((a, b) => new Date(b.lastBalancedDate) - new Date(a.lastBalancedDate))[0];
+
+    if (latestBalanceRecord) {
+      currentCashBalance = latestBalanceRecord.cashBalance;
+      currentBankBalance = latestBalanceRecord.bankBalance;
+      lastBalancedDate = latestBalanceRecord.lastBalancedDate;
+
+      rows.push({
+        id: 'opening-balance',
+        type: 'balance',
+        date: latestBalanceRecord.lastBalancedDate,
+        particularsDebit: 'Opening Balance',
+        particularsCredit: '',
+        debitCash: currentCashBalance,
+        debitBank: currentBankBalance,
+        creditCash: null,
+        creditBank: null,
+        runningCash: currentCashBalance,
+        runningBank: currentBankBalance,
+      });
+    }
+
+    // Sort transactions by date
+    const sortedTransactions = transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    sortedTransactions.forEach(transaction => {
+      const isCash = transaction.paymentMethod === 'Cash';
+      const isBank = transaction.paymentMethod === 'Bank Transfer' || transaction.paymentMethod === 'Card';
+
+      const particulars = transaction.description || (transaction.client ? `Client: ${transaction.client.name}` : 'N/A');
+
+      if (transaction.type === 'Income') {
+        if (isCash) {
+          currentCashBalance += transaction.amount;
+        } else if (isBank) {
+          currentBankBalance += transaction.amount;
+        }
+        rows.push({
+          id: transaction._id,
+          type: 'income',
+          date: transaction.date,
+          particularsDebit: particulars,
+          particularsCredit: '',
+          debitCash: isCash ? transaction.amount : null,
+          debitBank: isBank ? transaction.amount : null,
+          creditCash: null,
+          creditBank: null,
+          runningCash: currentCashBalance,
+          runningBank: currentBankBalance,
+        });
+      } else if (transaction.type === 'Expense') {
+        if (isCash) {
+          currentCashBalance -= transaction.amount;
+        } else if (isBank) {
+          currentBankBalance -= transaction.amount;
+        }
+        rows.push({
+          id: transaction._id,
+          type: 'expense',
+          date: transaction.date,
+          particularsDebit: '',
+          particularsCredit: particulars,
+          debitCash: null,
+          debitBank: null,
+          creditCash: isCash ? transaction.amount : null,
+          creditBank: isBank ? transaction.amount : null,
+          runningCash: currentCashBalance,
+          runningBank: currentBankBalance,
+        });
+      }
+    });
+
+    // Add a closing balance row
+    rows.push({
+      id: 'closing-balance',
+      type: 'total',
+      date: new Date(), // Use current date for closing balance row
+      particularsDebit: 'Closing Balance',
+      particularsCredit: '',
+      debitCash: null,
+      debitBank: null,
+      creditCash: null,
+      creditBank: null,
+      runningCash: currentCashBalance,
+      runningBank: currentBankBalance,
+    });
+
+    return {
+      rows,
+      lastBalancedDate: lastBalancedDate,
+      finalBalance: { cash: currentCashBalance, bank: currentBankBalance },
+    };
   };
 
   // Filter data based on date range
