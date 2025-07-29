@@ -9,7 +9,7 @@ import {
     FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRealm, useObject } from '@realm/react';
+import { useRealm, useObject } from '../config/realmConfig';
 import BackgroundContainer from '../components/BackgroundContainer';
 import CollapsibleSection from '../components/CollapsibleSection';
 import BookingCard from '../components/BookingCard'; // Re-use the BookingCard component
@@ -155,6 +155,12 @@ const ClientDetailScreen = ({ route, navigation }) => {
                         <Text style={styles.editButtonText}>Edit</Text>
                     </TouchableOpacity>
                 </View>
+
+                {client.syncStatus === 'pending' && (
+                    <View style={styles.syncBanner}>
+                        <Text style={styles.syncBannerText}>Awaiting Internet Connection to Sync</Text>
+                    </View>
+                )}
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Contact Information</Text>
@@ -304,6 +310,19 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: theme.COLORS.textMedium,
         padding: theme.SPACING.lg,
+    },
+    syncBanner: {
+        backgroundColor: theme.COLORS.warning,
+        padding: theme.SPACING.sm,
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginHorizontal: theme.SPACING.md,
+        marginTop: -10,
+        marginBottom: theme.SPACING.md,
+        alignItems: 'center',
+    },
+    syncBannerText: {
+        color: theme.COLORS.textLight,
+        fontWeight: 'bold',
     },
 });
 

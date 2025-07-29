@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useRealm } from '../config/realmConfig';
 import BackgroundContainer from '../components/BackgroundContainer';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { useNotification } from '../context/NotificationContext';
@@ -53,6 +54,7 @@ const MeasurementInput = ({ label, value, onChange, keyboardType = 'numeric' }) 
 
 const AddClientScreen = ({ navigation, route }) => {
     const { client } = route.params || {};
+    const realm = useRealm();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -122,29 +124,78 @@ const AddClientScreen = ({ navigation, route }) => {
             showNotification('Please enter name and phone number.', 'error');
             return;
         }
-        try {
-            const payload = {
-                ...formData,
-                measurement: Object.entries(formData.measurement).reduce((acc, [key, value]) => {
-                    if (Array.isArray(value)) {
-                        acc[key] = value.map(v => parseFloat(v) || 0);
-                    } else {
-                        acc[key] = parseFloat(value) || 0;
-                    }
-                    return acc;
-                }, {}),
-            };
 
-            if (client) {
-                await api.put(`/clients/${client._id}`, payload);
-                showNotification('Client updated successfully!', 'success');
-            } else {
-                await api.post('/clients', payload);
-                showNotification('Client added successfully!', 'success');
-            }
+        const payload = {
+            ...formData,
+            measurement: Object.entries(formData.measurement).reduce((acc, [key, value]) => {
+                if (Array.isArray(value)) {
+                    acc[key] = value.map(v => parseFloat(v) || 0);
+                } else {
+                    acc[key] = parseFloat(value) || 0;
+                }
+                return acc;
+            }, {}),
+        };
+
+        if (client) {
+            // Update existing client
+            realm.write(() => {
+                client.name = payload.name;
+                client.email = payload.email;
+                client.phone = payload.phone;
+                client.address = payload.address;
+                client.notes = payload.notes;
+                client.measurement = payload.measurement;
+                client.syncStatus = 'pending';
+            });
+            showNotification('Client updated locally.', 'info');
             navigation.goBack();
-        } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to save client.', 'error');
+
+            try {
+                const { data } = await api.put(`/clients/${client._id}`, payload);
+                realm.write(() => {
+                    client.syncStatus = 'synced';
+                    client.updatedAt = new Date(data.updatedAt);
+                });
+                showNotification('Client changes synced successfully!', 'success');
+            } catch (err) {
+                realm.write(() => {
+                    client.syncStatus = 'error';
+                });
+                showNotification(err.response?.data?.msg || 'Failed to sync client changes.', 'error');
+            }
+        } else {
+            // Create new client
+            let newClient;
+            realm.write(() => {
+                newClient = realm.create('Client', {
+                    ...payload,
+                    _id: new Realm.BSON.ObjectId(),
+                    createdBy: new Realm.BSON.ObjectId(), // This should be the current user's ID
+                    syncStatus: 'pending',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+            });
+            showNotification('Client added locally.', 'info');
+            navigation.goBack();
+
+            try {
+                const { data } = await api.post('/clients', payload);
+                realm.write(() => {
+                    // This is tricky because the server creates a new ID.
+                    // For now, we'll just mark the local one as synced.
+                    // A more robust solution would be to update the local ID with the server's ID.
+                    newClient.syncStatus = 'synced';
+                    newClient.updatedAt = new Date(data.updatedAt);
+                });
+                showNotification('New client synced successfully!', 'success');
+            } catch (err) {
+                realm.write(() => {
+                    newClient.syncStatus = 'error';
+                });
+                showNotification(err.response?.data?.msg || 'Failed to sync new client.', 'error');
+            }
         }
     };
 

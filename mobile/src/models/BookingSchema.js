@@ -1,3 +1,4 @@
+// schemas/BookingSchema.js
 export const BookingSchema = {
     name: 'Booking',
     primaryKey: '_id',
@@ -5,15 +6,16 @@ export const BookingSchema = {
         _id: 'objectId',
         client: 'Client',
         bookingDate: 'date',
-        deliveryDate: 'date',
+        deliveryDate: 'date?',
+        reminderDate: 'date?',
         status: 'string',
-        items: 'string[]',
-        totalAmount: 'double',
-        amountPaid: 'double',
-        balanceDue: 'double',
         notes: 'string?',
-        createdBy: 'objectId',
+        bookedBy: 'objectId',
+        design: 'string?',
+        price: 'double',
+        payment: 'double',
         createdAt: 'date',
         updatedAt: 'date',
+        syncStatus: 'string?', // synced, pending, error
     },
 };

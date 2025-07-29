@@ -25,9 +25,13 @@ const userSchema = mongoose.Schema(
             type: String,
             required: false, // Not all users will have a push token
         },
+        refreshTokens: {
+            type: [String], // Array of strings to store multiple refresh tokens
+            default: [],
+        },
     },
     {
-        timestamps: true, 
+        timestamps: true,
     }
 );
 
@@ -53,12 +57,17 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// --- Method to Generate JWT Token ---
-// This method will generate a JSON Web Token for the user upon successful login.
-// The token contains the user's ID and is signed with a secret key.
-userSchema.methods.generateAuthToken = function () {
+// Method to Generate Access Token (short-lived JWT)
+userSchema.methods.generateAccessToken = function () {
     return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-        expiresIn: '24h', // Token expires in 24 hour
+        expiresIn: '15m', // Access token expires in 15 minutes
+    });
+};
+
+// Method to Generate Refresh Token (long-lived, stored in DB)
+userSchema.methods.generateRefreshToken = function () {
+    return jwt.sign({ id: this._id }, process.env.JWT_REFRESH_SECRET, {
+        expiresIn: '7d', // Refresh token expires in 7 days
     });
 };
 

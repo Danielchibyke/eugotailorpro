@@ -60,7 +60,7 @@ const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
                         <Image source={{ uri: booking.design }} style={styles.designImage} />
                     </TouchableOpacity>
                 )}
-                <Text style={styles.service} numberOfLines={1}>{service}</Text>
+                <Text style={styles.service} numberOfLines={1}>{booking.notes}</Text>
                 <View style={styles.dateContainer}>
                     <Ionicons name="calendar-outline" size={16} color={theme.COLORS.textMedium} />
                     <Text style={styles.dateText}>

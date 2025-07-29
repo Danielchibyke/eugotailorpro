@@ -1,4 +1,5 @@
 // server/controllers/authController.js
+import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
@@ -25,12 +26,19 @@ const registerUser = asyncHandler(async (req, res) => {
     });
 
     if (user) {
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshTokens.push(refreshToken); // Store the refresh token
+        await user.save();
+
         res.status(201).json({
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
-            token: user.generateAuthToken(),
+            token: accessToken, // Access token
+            refreshToken: refreshToken, // Refresh token
         });
     } else {
         res.status(400);
@@ -47,12 +55,19 @@ const loginUser = asyncHandler(async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshTokens.push(refreshToken); // Store the refresh token
+        await user.save();
+
         res.json({
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
-            token: user.generateAuthToken(),
+            token: accessToken, // Access token
+            refreshToken: refreshToken, // Refresh token
         });
     } else {
         res.status(401);
@@ -85,4 +100,79 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     });
 });
 
-export { registerUser, loginUser, getDashboardStats };
+// @desc    Refresh access token
+// @route   POST /api/auth/refresh-token
+// @access  Public (but requires a valid refresh token)
+const refreshToken = asyncHandler(async (req, res) => {
+    const { refreshToken: clientRefreshToken } = req.body;
+
+    if (!clientRefreshToken) {
+        res.status(401);
+        throw new Error('No refresh token provided');
+    }
+
+    try {
+        const decoded = jwt.verify(clientRefreshToken, process.env.JWT_REFRESH_SECRET);
+
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+            res.status(401);
+            throw new Error('User not found');
+        }
+
+        // Check if the refresh token exists in the user's stored refresh tokens
+        if (!user.refreshTokens.includes(clientRefreshToken)) {
+            res.status(401);
+            throw new Error('Invalid refresh token');
+        }
+
+        // Generate new access and refresh tokens
+        const newAccessToken = user.generateAccessToken();
+        const newRefreshToken = user.generateRefreshToken();
+
+        // Invalidate the old refresh token and add the new one
+        user.refreshTokens = user.refreshTokens.filter(token => token !== clientRefreshToken);
+        user.refreshTokens.push(newRefreshToken);
+        await user.save();
+
+        res.json({
+            token: newAccessToken,
+            refreshToken: newRefreshToken,
+        });
+
+    } catch (error) {
+        res.status(401);
+        throw new Error('Not authorized, refresh token failed');
+    }
+});
+
+
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateUserProfile = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+        user.name = req.body.name || user.name;
+        user.email = req.body.email || user.email;
+        if (req.body.password) {
+            user.password = req.body.password;
+        }
+
+        const updatedUser = await user.save();
+
+        res.json({
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            token: user.generateAccessToken(),
+        });
+    } else {
+        res.status(404);
+        throw new Error('User not found');
+    }
+});
+export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile };

@@ -10,7 +10,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRealm, useQuery } from '@realm/react';
+import { useRealm, useQuery } from '../config/realmConfig';
 import BackgroundContainer from '../components/BackgroundContainer';
 import ClientCard from '../components/ClientCard';
 import { useNotification } from '../context/NotificationContext';
@@ -24,6 +24,10 @@ const ClientsScreen = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
+
+    const handleSearch = (query) => {
+        setSearchQuery(query);
+    };
 
     const fetchClients = useCallback(async () => {
         setLoading(true);
@@ -42,20 +46,21 @@ const ClientsScreen = ({ navigation }) => {
                         notes: clientData.notes,
                         createdBy: new Realm.BSON.ObjectId(clientData.createdBy),
                         measurement: clientData.measurement ? {
-                            chest: clientData.measurement.chest || [0, 0],
-                            waist: clientData.measurement.waist || 0,
-                            roundsleeve: clientData.measurement.roundsleeve || [0, 0, 0],
-                            shoulder: clientData.measurement.shoulder || 0,
-                            toplength: clientData.measurement.toplength || 0,
-                            trouserlength: clientData.measurement.trouserlength || 0,
-                            thigh: clientData.measurement.thigh || 0,
-                            knee: clientData.measurement.knee || 0,
-                            ankle: clientData.measurement.ankle || 0,
-                            neck: clientData.measurement.neck || 0,
-                            sleeveLength: clientData.measurement.sleeveLength || [0, 0, 0],
-                        } : {},
+                            chest: (clientData.measurement.chest || []).map(v => parseInt(v, 10) || 0),
+                            waist: parseInt(clientData.measurement.waist, 10) || 0,
+                            roundsleeve: (clientData.measurement.roundsleeve || []).map(v => parseInt(v, 10) || 0),
+                            shoulder: parseInt(clientData.measurement.shoulder, 10) || 0,
+                            toplength: parseInt(clientData.measurement.toplength, 10) || 0,
+                            trouserlength: parseInt(clientData.measurement.trouserlength, 10) || 0,
+                            thigh: parseInt(clientData.measurement.thigh, 10) || 0,
+                            knee: parseInt(clientData.measurement.knee, 10) || 0,
+                            ankle: parseInt(clientData.measurement.ankle, 10) || 0,
+                            neck: parseInt(clientData.measurement.neck, 10) || 0,
+                            sleeveLength: (clientData.measurement.sleeveLength || []).map(v => parseInt(v, 10) || 0),
+                        } : null,
                         createdAt: new Date(clientData.createdAt),
                         updatedAt: new Date(clientData.updatedAt),
+                        syncStatus: 'synced',
                     });
                 });
             });

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
-import { useRealm, useObject } from '@realm/react';
+import { useRealm, useObject } from '../config/realmConfig';
 import BackgroundContainer from '../components/BackgroundContainer';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { useNotification } from '../context/NotificationContext';
@@ -41,19 +41,66 @@ const BookingDetailScreen = ({ route, navigation }) => {
                         address: data.client.address || null,
                         notes: data.client.notes || null,
                         createdBy: new Realm.BSON.ObjectId(data.client.createdBy),
-                        measurement: data.client.measurement ? {
-                            chest: data.client.measurement.chest || [0, 0],
-                            waist: data.client.measurement.waist || 0,
-                            roundsleeve: data.client.measurement.roundsleeve || [0, 0, 0],
-                            shoulder: data.client.measurement.shoulder || 0,
-                            toplength: data.client.measurement.toplength || 0,
-                            trouserlength: data.client.measurement.trouserlength || 0,
-                            thigh: data.client.measurement.thigh || 0,
-                            knee: data.client.measurement.knee || 0,
-                            ankle: data.client.measurement.ankle || 0,
-                            neck: data.client.measurement.neck || 0,
-                            sleeveLength: data.client.measurement.sleeveLength || [0, 0, 0],
-                        } : {},
+                        measurement: data.client.measurement ? (() => {
+                            const sanitizedMeasurement = {
+                                chest: Array.isArray(data.client.measurement.chest) ? data.client.measurement.chest.map(val => {
+                                    const parsedVal = parseInt(val);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                }) : [0, 0],
+                                waist: (() => {
+                                    const parsedVal = parseInt(data.client.measurement.waist);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                })(),
+                                roundsleeve: Array.isArray(data.client.measurement.roundsleeve) ? data.client.measurement.roundsleeve.map(val => {
+                                    const parsedVal = parseInt(val);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                }) : [0, 0, 0],
+                                shoulder: (() => {
+                                    const parsedVal = parseInt(data.client.measurement.shoulder);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                })(),
+                                toplength: (() => {
+                                    const parsedVal = parseInt(data.client.measurement.toplength);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                })(),
+                                trouserlength: (() => {
+                                    const parsedVal = parseInt(data.client.measurement.trouserlength);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                })(),
+                                thigh: (() => {
+                                    const parsedVal = parseInt(data.client.measurement.thigh);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                })(),
+                                knee: (() => {
+                                    const parsedVal = parseInt(data.client.measurement.knee);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                })(),
+                                ankle: (() => {
+                                    const parsedVal = parseInt(data.client.measurement.ankle);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                })(),
+                                neck: (() => {
+                                    const parsedVal = parseInt(data.client.measurement.neck);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                })(),
+                                sleeveLength: Array.isArray(data.client.measurement.sleeveLength) ? data.client.measurement.sleeveLength.map(val => {
+                                    const parsedVal = parseInt(val);
+                                    if (isNaN(parsedVal)) { return 0; }
+                                    return parsedVal;
+                                }) : [0, 0, 0],
+                            };
+                            return sanitizedMeasurement;
+                        })() : {},
                         createdAt: new Date(data.client.createdAt),
                         updatedAt: new Date(data.client.updatedAt),
                     }, Realm.UpdateMode.Modified);
@@ -64,27 +111,76 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     clientRealmObject.phone = data.client.phone;
                     clientRealmObject.address = data.client.address || null;
                     clientRealmObject.notes = data.client.notes || null;
-                    clientRealmObject.measurement = data.client.measurement ? {
-                        chest: data.client.measurement.chest || [0, 0],
-                        waist: data.client.measurement.waist || 0,
-                        roundsleeve: data.client.measurement.roundsleeve || [0, 0, 0],
-                        shoulder: data.client.measurement.shoulder || 0,
-                        toplength: data.client.measurement.toplength || 0,
-                        trouserlength: data.client.measurement.trouserlength || 0,
-                        thigh: data.client.measurement.thigh || 0,
-                        knee: data.client.measurement.knee || 0,
-                        ankle: data.client.measurement.ankle || 0,
-                        neck: data.client.measurement.neck || 0,
-                        sleeveLength: data.client.measurement.sleeveLength || [0, 0, 0],
-                    } : {};
+                    clientRealmObject.measurement = data.client.measurement ? (() => {
+                        const sanitizedMeasurement = {
+                            chest: Array.isArray(data.client.measurement.chest) ? data.client.measurement.chest.map(val => {
+                                const parsedVal = parseInt(val);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            }) : [0, 0],
+                            waist: (() => {
+                                const parsedVal = parseInt(data.client.measurement.waist);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            })(),
+                            roundsleeve: Array.isArray(data.client.measurement.roundsleeve) ? data.client.measurement.roundsleeve.map(val => {
+                                const parsedVal = parseInt(val);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            }) : [0, 0, 0],
+                            shoulder: (() => {
+                                const parsedVal = parseInt(data.client.measurement.shoulder);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            })(),
+                            toplength: (() => {
+                                const parsedVal = parseInt(data.client.measurement.toplength);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            })(),
+                            trouserlength: (() => {
+                                const parsedVal = parseInt(data.client.measurement.trouserlength);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            })(),
+                            thigh: (() => {
+                                const parsedVal = parseInt(data.client.measurement.thigh);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            })(),
+                            knee: (() => {
+                                const parsedVal = parseInt(data.client.measurement.knee);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            })(),
+                            ankle: (() => {
+                                const parsedVal = parseInt(data.client.measurement.ankle);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            })(),
+                            neck: (() => {
+                                const parsedVal = parseInt(data.client.measurement.neck);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            })(),
+                            sleeveLength: Array.isArray(data.client.measurement.sleeveLength) ? data.client.measurement.sleeveLength.map(val => {
+                                const parsedVal = parseInt(val);
+                                if (isNaN(parsedVal)) { return 0; }
+                                return parsedVal;
+                            }) : [0, 0, 0],
+                        };
+                        return sanitizedMeasurement;
+                    })() : {};
                     clientRealmObject.updatedAt = new Date(data.client.updatedAt);
                 }
 
                 // Update booking data in Realm
-                if (booking) {
+                if (booking && booking.isValid()) {
+                    console.log('BookingDetailScreen: Assigning client to booking. clientRealmObject:', clientRealmObject ? clientRealmObject.isValid() ? clientRealmObject.toJSON() : 'Invalid Realm Object' : 'null');
                     booking.client = clientRealmObject;
                     booking.bookingDate = new Date(data.bookingDate);
-                    booking.deliveryDate = new Date(data.deliveryDate);
+                    booking.deliveryDate = data.deliveryDate ? new Date(data.deliveryDate) : undefined; // Handle optional deliveryDate
+                    booking.reminderDate = data.reminderDate ? new Date(data.reminderDate) : undefined; // Handle optional reminderDate
                     booking.status = data.status;
                     booking.items = data.items || [];
                     booking.totalAmount = data.totalAmount;
@@ -93,12 +189,16 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     booking.notes = data.notes || null;
                     booking.createdBy = new Realm.BSON.ObjectId(data.createdBy);
                     booking.updatedAt = new Date(data.updatedAt);
+                    console.log('BookingDetailScreen: Booking after client assignment:', booking.client ? booking.client.isValid() ? booking.client.toJSON() : 'Invalid Realm Object' : 'null');
                 }
             });
             showNotification('Booking details synced successfully!', 'success');
         } catch (err) {
             console.error('Failed to fetch booking details from API:', err);
-            showNotification(err.response?.data?.msg || 'Failed to fetch booking details. Displaying cached data.', 'error');
+            // Only show notification if truly offline, otherwise fail silently for background sync
+            if (!netInfo.isConnected) {
+                showNotification(err.response?.data?.msg || 'Failed to fetch booking details. Displaying cached data.', 'error');
+            }
         } finally {
             setLoading(false);
         }
@@ -119,17 +219,27 @@ const BookingDetailScreen = ({ route, navigation }) => {
                 {
                     text: "Complete",
                     onPress: async () => {
+                        realm.write(() => {
+                            booking.status = 'Completed';
+                            booking.syncStatus = 'pending';
+                        });
+                        showNotification('Booking marked as completed locally.', 'info');
+
                         try {
                             const updatedBooking = { ...booking.toJSON(), status: 'Completed' };
                             const { data } = await api.put(`/bookings/${booking._id.toHexString()}`, updatedBooking);
-                            // Update Realm object directly
+                            
                             realm.write(() => {
                                 booking.status = data.status;
                                 booking.updatedAt = new Date(data.updatedAt);
+                                booking.syncStatus = 'synced';
                             });
-                            showNotification('Booking marked as completed!', 'success');
+                            showNotification('Booking status synced successfully!', 'success');
                         } catch (err) {
-                            showNotification(err.response?.data?.msg || "Failed to update status.", 'error');
+                            realm.write(() => {
+                                booking.syncStatus = 'error';
+                            });
+                            showNotification(err.response?.data?.msg || "Failed to sync booking status.", 'error');
                         }
                     },
                     style: "default"
@@ -172,6 +282,19 @@ const BookingDetailScreen = ({ route, navigation }) => {
     const { client, bookingDate, deliveryDate, status, totalAmount = 0, amountPaid = 0, notes } = booking;
     const amountRemaining = totalAmount - amountPaid;
 
+    console.log('BookingDetailScreen: Rendering with booking:', booking ? booking.isValid() ? booking.toJSON() : 'Invalid Realm Object' : 'null');
+    console.log('BookingDetailScreen: Rendering with client:', client ? client.isValid() ? client.toJSON() : 'Invalid Realm Object' : 'null');
+
+    if (!client || (client && !client.isValid())) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>Client information not available or invalid. Please check your connection or try again later.</Text>
+                </View>
+            </BackgroundContainer>
+        );
+    }
+
     return (
         <BackgroundContainer>
             <ScrollView contentContainerStyle={styles.content}>
@@ -186,6 +309,12 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     </TouchableOpacity>
                 </View>
 
+                {booking.syncStatus === 'pending' && (
+                    <View style={styles.syncBanner}>
+                        <Text style={styles.syncBannerText}>Awaiting Internet Connection to Sync</Text>
+                    </View>
+                )}
+
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Client Information</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('ClientDetail', { clientId: client._id.toHexString() })}>
@@ -197,12 +326,14 @@ const BookingDetailScreen = ({ route, navigation }) => {
 
                 {client.measurement && Object.keys(client.measurement).length > 0 && (
                     <CollapsibleSection title="Client Measurements">
-                        {Object.entries(client.measurement).map(([key, value]) => (
-                            <View style={styles.detailRow} key={key}>
-                                <Text style={styles.detailLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
-                                <Text style={styles.detailValue}>{Array.isArray(value) ? value.join(', ') : value}</Text>
-                            </View>
-                        ))}
+                        {Object.entries(client.measurement).map(([key, value]) => {
+                            return (
+                                <View style={styles.detailRow} key={key}>
+                                    <Text style={styles.detailLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+                                    <Text style={styles.detailValue}>{Array.isArray(value) ? value.join(', ') : value}</Text>
+                                </View>
+                            );
+                        })}
                     </CollapsibleSection>
                 )}
 
@@ -222,7 +353,7 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Items</Text>
-                        <Text style={styles.detailValue}>{booking.items.join(', ')}</Text>
+                        <Text style={styles.detailValue}>{booking.items && booking.items.length > 0 ? booking.items.join(', ') : 'N/A'}</Text>
                     </View>
                     {notes && (
                         <View style={styles.notesSection}>
@@ -366,6 +497,17 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: theme.FONT_SIZES.button,
         marginLeft: theme.SPACING.sm,
+    },
+    syncBanner: {
+        backgroundColor: theme.COLORS.warning,
+        padding: theme.SPACING.sm,
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginBottom: theme.SPACING.md,
+        alignItems: 'center',
+    },
+    syncBannerText: {
+        color: theme.COLORS.textLight,
+        fontWeight: 'bold',
     },
 });
 

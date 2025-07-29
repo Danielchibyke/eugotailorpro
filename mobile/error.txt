@@ -1,13 +1,1 @@
-
-* What went wrong:
-A problem occurred configuring project ':realm'.
-> [CXX1101] NDK at C:\Users\POGBA\AppData\Local\Android\Sdk\ndk\27.0.12077973 did not have a source.properties file
-
-* Try:
-> Run with --stacktrace option to get the stack trace.
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
-
-BUILD FAILED in 9s
-error Failed to install the app. Command failed with exit code 1: gradlew.bat app:installDebug -PreactNativeDevServerPort=8081 FAILURE: Build failed with an exception. * What went wrong: A problem occurred configuring project ':realm'. > [CXX1101] NDK at C:\Users\POGBA\AppData\Local\Android\Sdk\ndk\27.0.12077973 did not have a source.properties file * Try: > Run with --stacktrace option to get the stack trace. > Run with --info or --debug option to get more log output. > Run with --scan to get full insights. > Get more help at https://help.gradle.org. BUILD FAILED in 9s.
+ ERROR  Failed to update profile: [TypeError: setUser is not a function (it is undefined)]

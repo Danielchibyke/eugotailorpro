@@ -1,4 +1,4 @@
-import messaging from '@react-native-firebase/messaging';
+import messaging, { getMessaging } from '@react-native-firebase/messaging';
 import { Platform } from 'react-native';
 
 export async function registerForPushNotificationsAsync() {
@@ -6,20 +6,20 @@ export async function registerForPushNotificationsAsync() {
 
   try {
     // Request permissions for notifications
-    const authStatus = await messaging().requestPermission();
+    const authStatus = await getMessaging().requestPermission();
     const enabled =
       authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
     if (!enabled) {
-      console.log('Authorization status:', authStatus);
+      // console.log('Authorization status:', authStatus);
       alert('Failed to get push token for push notification! Permission not granted.');
       return;
     }
 
     // Get the FCM token
-    token = await messaging().getToken();
-    console.log('FCM Push Token:', token);
+    token = await getMessaging().getToken();
+    // console.log('FCM Push Token:', token);
 
     // For Android, you might want to create a default channel if not already done in Firebase console
     // This is typically handled by Firebase itself or in native code for more complex setups.

@@ -1,3 +1,5 @@
+import { MeasurementSchema } from './MeasurementSchema';
+
 export const ClientSchema = {
     name: 'Client',
     primaryKey: '_id',
@@ -9,23 +11,9 @@ export const ClientSchema = {
         address: 'string?',
         notes: 'string?',
         createdBy: 'objectId',
-        measurement: {
-            type: 'object',
-            properties: {
-                chest: 'int[]',
-                waist: 'int',
-                roundsleeve: 'int[]',
-                shoulder: 'int',
-                toplength: 'int',
-                trouserlength: 'int',
-                thigh: 'int',
-                knee: 'int',
-                ankle: 'int',
-                neck: 'int',
-                sleeveLength: 'int[]',
-            },
-        },
+        measurement: 'Measurement?', // Link to the embedded Measurement object
         createdAt: 'date',
         updatedAt: 'date',
-    },
+        syncStatus: 'string?', // synced, pending, 
+    }
 };

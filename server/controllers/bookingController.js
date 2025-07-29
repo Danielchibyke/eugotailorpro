@@ -85,8 +85,7 @@ const getBookings = asyncHandler(async (req, res) => {
     const filter = clientId ? { client: clientId } : {};
    
     const bookings = await Booking.find(filter)
-        .populate('client', 'name email phone') // Populate client info
-        .populate('bookedBy', 'name email'); // Populate booker info
+        .populate('client', 'name email phone createdBy'); // Populate client info
     res.json(bookings);
 });
 

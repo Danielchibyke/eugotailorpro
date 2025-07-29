@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
+import { ActivityIndicator, View } from 'react-native'; // Import ActivityIndicator and View
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -16,6 +17,8 @@ import AddBookingScreen from '../screens/AddBookingScreen';
 import BookingDetailScreen from '../screens/BookingDetailScreen';
 import FinancialsScreen from '../screens/FinancialsScreen';
 import CashBookScreen from '../screens/CashBookScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 
 import { COLORS } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,7 +64,7 @@ const MainTabs = () => (
 );
 
 import TopNavbar from '../components/TopNavbar';
-import { View } from 'react-native';
+
 import NotificationHandler from '../components/NotificationHandler'; // Import NotificationHandler
 
 const MainStack = () => (
@@ -74,13 +77,24 @@ const MainStack = () => (
             <Stack.Screen name="AddBooking" component={AddBookingScreen} />
             <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
             <Stack.Screen name="CashBook" component={CashBookScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         </Stack.Navigator>
     </View>
 );
 
 const AppNavigator = () => {
-    const { user } = useAuth();
-    console.log('AppNavigator user:', user);
+    const { user, loading } = useAuth(); // Get loading state
+    // console.log('AppNavigator user:', user, 'loading:', loading);
+
+    if (loading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" />
+            </View>
+        );
+    }
+
     return (
         <NavigationContainer>
             {user ? <MainStack /> : <AuthStack />}
