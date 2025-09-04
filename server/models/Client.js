@@ -1,6 +1,20 @@
 // server/models/Client.js
 import mongoose from 'mongoose';
 
+const measurementSchema = mongoose.Schema({
+    chest: { type: [Number] },
+    waist: { type: Number },
+    roundsleeve: { type: [Number] },
+    shoulder: { type: Number },
+    toplength: { type: Number },
+    trouserlength: { type: Number },
+    thigh: { type: Number },
+    knee: { type: Number },
+    ankle: { type: Number },
+    neck: { type: Number },
+    sleeveLength: { type: [Number] },
+}, { _id: false });
+
 const clientSchema = mongoose.Schema(
     {
         name: {
@@ -9,75 +23,32 @@ const clientSchema = mongoose.Schema(
         },
         email: {
             type: String,
-            unique: true, // Clients can have unique emails
-            sparse: true, // Allows null values, so email is not strictly required but if present, must be unique
+            unique: true,
+            sparse: true,
         },
         phone: {
             type: String,
             required: true,
-            unique: true, // Phone numbers should be unique
+            unique: true,
         },
         address: {
             type: String,
         },
-        notes: { // Any specific client notes or preferences
+        notes: {
             type: String,
         },
-        // Reference to the user (staff/admin) who created this client record
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             required: true,
             ref: 'User',
         },
-        measurement: {
-            chest: {
-                type: [Number],
-                default: [0, 0],
-            },
-            waist: {
-                type: Number,
-                default: 0,
-            },
-            roundsleeve: {
-                type: [Number],
-                default: [0, 0, 0],
-            },
-            shoulder: {
-                type: Number,
-                default: 0,
-            },
-            toplength: {
-                type: Number,
-                default: 0,
-            },
-            trouserlength: {
-                type: Number,
-                default: 0,
-            },
-            thigh: {
-                type: Number,
-                default: 0,
-            },
-            knee: {
-                type: Number,
-                default: 0,
-            },
-            ankle: {
-                type: Number,
-                default: 0,
-            },
-            neck: {
-                type: Number,
-                default: 0,
-            },
-            sleeveLength: {
-                type: [Number],
-                default: [0, 0, 0],
-            },
-        }
+        measurements: {
+            type: measurementSchema,
+            default: {},
+        },
     },
     {
-        timestamps: true, // Adds createdAt and updatedAt
+        timestamps: true,
     }
 );
 

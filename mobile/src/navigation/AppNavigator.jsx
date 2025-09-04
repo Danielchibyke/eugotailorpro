@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View } from 'react-native'; // Import ActivityIndicator and View
+import { ActivityIndicator, View } from 'react-native';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -19,9 +19,18 @@ import FinancialsScreen from '../screens/FinancialsScreen';
 import CashBookScreen from '../screens/CashBookScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import ViewMeasurementsScreen from '../screens/ViewMeasurementsScreen';
+import AddEditMeasurementScreen from '../screens/AddEditMeasurementScreen';
+import GalleryScreen from '../screens/GalleryScreen';
+import MeasurementTemplatesScreen from '../screens/MeasurementTemplatesScreen';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 import { COLORS } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
+
+import TopNavbar from '../components/TopNavbar';
+import NotificationHandler from '../components/NotificationHandler';
+import UserManagementScreen from '../screens/UserManagementScreen'; // Import the new screen
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -29,7 +38,6 @@ const Tab = createBottomTabNavigator();
 const AuthStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
 );
 
@@ -42,12 +50,18 @@ const MainTabs = () => (
 
                 if (route.name === 'Dashboard') {
                     iconName = focused ? 'home' : 'home-outline';
-                } else if (route.name === 'Bookings') {
+                }
+                else if (route.name === 'Bookings') {
                     iconName = focused ? 'calendar' : 'calendar-outline';
-                } else if (route.name === 'Clients') {
+                }
+                else if (route.name === 'Clients') {
                     iconName = focused ? 'people' : 'people-outline';
-                } else if (route.name === 'Financials') {
+                }
+                else if (route.name === 'Financials') {
                     iconName = focused ? 'cash' : 'cash-outline';
+                }
+                else if (route.name === 'Gallery') {
+                    iconName = focused ? 'images' : 'images-outline';
                 }
 
                 return <Ionicons name={iconName} size={size} color={color} />;
@@ -60,12 +74,9 @@ const MainTabs = () => (
         <Tab.Screen name="Bookings" component={BookingsScreen} />
         <Tab.Screen name="Clients" component={ClientsScreen} />
         <Tab.Screen name="Financials" component={FinancialsScreen} />
+        <Tab.Screen name="Gallery" component={GalleryScreen} />
     </Tab.Navigator>
 );
-
-import TopNavbar from '../components/TopNavbar';
-
-import NotificationHandler from '../components/NotificationHandler'; // Import NotificationHandler
 
 const MainStack = () => (
     <View style={{ flex: 1 }}>
@@ -79,13 +90,24 @@ const MainStack = () => (
             <Stack.Screen name="CashBook" component={CashBookScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="Register">
+                {() => (
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <RegisterScreen />
+                    </ProtectedRoute>
+                )}
+            </Stack.Screen>
+            <Stack.Screen name="ViewMeasurements" component={ViewMeasurementsScreen} />
+            <Stack.Screen name="AddEditMeasurement" component={AddEditMeasurementScreen} />
+            <Stack.Screen name="MeasurementTemplates" component={MeasurementTemplatesScreen} />
+            <Stack.Screen name="Gallery" component={GalleryScreen} />
+            <Stack.Screen name="UserManagement" component={UserManagementScreen} />
         </Stack.Navigator>
     </View>
 );
 
 const AppNavigator = () => {
-    const { user, loading } = useAuth(); // Get loading state
-    // console.log('AppNavigator user:', user, 'loading:', loading);
+    const { user, loading } = useAuth();
 
     if (loading) {
         return (
@@ -98,7 +120,7 @@ const AppNavigator = () => {
     return (
         <NavigationContainer>
             {user ? <MainStack /> : <AuthStack />}
-            <NotificationHandler />{/* Render NotificationHandler here */}
+            <NotificationHandler />
         </NavigationContainer>
     );
 };

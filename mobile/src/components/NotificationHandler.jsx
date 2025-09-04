@@ -4,7 +4,7 @@ import messaging, { getMessaging } from '@react-native-firebase/messaging';
 import { registerForPushNotificationsAsync } from '../utils/notificationService';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext'; // Import useNotification
-import api from '../utils/api';
+import { getApi } from '../utils/api';
 import { useNavigation } from '@react-navigation/native'; // Import useNavigation
 
 const NotificationHandler = () => {
@@ -14,12 +14,12 @@ const NotificationHandler = () => {
 
   useEffect(() => {
     console.log('NotificationHandler useEffect: user status', user ? 'defined' : 'undefined', 'loading:', loading);
-    if (!loading && user && api.defaults.headers.common['Authorization']) { // Only proceed if not loading, user is defined, and auth header is set
+    if (!loading && user) { // Only proceed if not loading and user is defined
       registerForPushNotificationsAsync().then(token => {
         // console.log('Generated FCM Push Token:', token);
         if (token) {
           // Send the token to your backend
-          api.post('/notifications/save-token', { expoPushToken: token, userId: user._id }) // Keep expoPushToken field name for now
+          getApi().post('/notifications/save-token', { expoPushToken: token, userId: user._id }) // Keep expoPushToken field name for now
             .then(res => console.log('FCM token saved on server'))
             .catch(err => console.error('Failed to save FCM token on server:', err.response?.data || err.message));
         }

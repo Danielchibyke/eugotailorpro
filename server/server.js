@@ -9,6 +9,7 @@ import financialRoutes from './routes/financialRoutes.js';
 import balanceRoutes from './routes/balanceRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import designRoutes from './routes/designRoutes.js';
 import startReminderScheduler from './utils/reminderScheduler.js'; 
 
 
@@ -22,18 +23,29 @@ const app = express();
 'http://localhost:5173', 'exp://172.20.10.2:8081'
 
 // middlewares
-app.use(cors(
-  {
-    origin: process.env.CORS_ORIGIN || ['http://localhost:5173',  'exp://172.20.10.3:8081', 'exp://172.20.10.2:8081','http://localhost:8081', 'http://localhost:8082', '*'],// Adjust this to your frontend URL
-    
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
-    
-  }
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.MOBILE_URL,
+  'http://localhost:5173', // Default for client
+  'exp://172.20.10.3:8081',
+  'exp://172.20.10.2:8081',
+  'http://localhost:8081',
+  'http://localhost:8082'
+].filter(Boolean);
 
-));
-app.use(express.json({ limit: '5000mb' }));
-app.use(express.urlencoded({ limit: '1000mb', extended: true }));
+app.use(cors({
+  origin: function (origin, callback) {
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.get('/', (req, res) => {
   res.send('API is running...');
@@ -46,6 +58,7 @@ app.use('/api/transactions', financialRoutes); // Use financial routes
 app.use('/api/balances', balanceRoutes); // Use balance routes
 app.use('/api/upload', uploadRoutes); // Use upload routes
 app.use('/api/notifications', notificationRoutes); // Use notification routes
+app.use('/api/designs', designRoutes); // Use design routes
 
 
 const PORT = process.env.PORT || 5000;

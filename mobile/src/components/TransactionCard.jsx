@@ -9,13 +9,25 @@ const TransactionCard = ({ transaction }) => {
     const amountColor = isIncome ? theme.COLORS.success : theme.COLORS.danger;
     const iconName = isIncome ? 'arrow-up-circle' : 'arrow-down-circle';
 
+    const renderSyncStatusIcon = () => {
+        if (transaction.syncStatus === 'pending') {
+            return <Ionicons name="cloud-upload-outline" size={16} color={theme.COLORS.warning} style={styles.syncIcon} />;
+        } else if (transaction.syncStatus === 'error') {
+            return <Ionicons name="alert-circle-outline" size={16} color={theme.COLORS.danger} style={styles.syncIcon} />;
+        }
+        return null;
+    };
+
     return (
         <View style={styles.card}>
             <View style={styles.row}>
                 <View style={styles.descriptionContainer}>
                     <Ionicons name={iconName} size={24} color={amountColor} style={styles.icon} />
                     <View style={styles.descriptionWrapper}>
-                        <Text style={styles.description}>{transaction.description}</Text>
+                        <View style={styles.descriptionAndStatus}>
+                            <Text style={styles.description}>{transaction.description}</Text>
+                            {renderSyncStatusIcon()}
+                        </View>
                         <Text style={styles.date}>{new Date(transaction.date).toLocaleDateString()}</Text>
                     </View>
                 </View>
@@ -80,6 +92,14 @@ const styles = StyleSheet.create({
     paymentMethod: {
         fontSize: theme.FONT_SIZES.sm,
         color: theme.COLORS.textMedium,
+    },
+    descriptionAndStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexShrink: 1,
+    },
+    syncIcon: {
+        marginLeft: theme.SPACING.xs,
     },
 });
 

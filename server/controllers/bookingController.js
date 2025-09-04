@@ -9,7 +9,7 @@ import { sendPushNotification } from './notificationController.js'; // Import th
 // @route   POST /api/bookings
 // @access  Private (Admin/Staff)
 const createBooking = asyncHandler(async (req, res) => {
-    const { client, bookingDate, deliveryDate, status, notes, design, price, payment, reminderDate } = req.body;
+    const { client, bookingDate, deliveryDate, status, notes, designs, price, payment, reminderDate } = req.body;
 
     // Basic validation
     if (!client || !bookingDate ) {
@@ -31,7 +31,7 @@ const createBooking = asyncHandler(async (req, res) => {
         status,
         notes,
         bookedBy: req.user._id, // User who created the booking
-        design,
+        designs,
         price,
         payment,
         reminderDate
@@ -85,7 +85,9 @@ const getBookings = asyncHandler(async (req, res) => {
     const filter = clientId ? { client: clientId } : {};
    
     const bookings = await Booking.find(filter)
-        .populate('client', 'name email phone createdBy'); // Populate client info
+        .populate('client', 'name email phone createdBy') // Populate client info
+        .populate('bookedBy', 'name email') // Populate bookedBy info
+        .select('+designs'); // Explicitly select the designs field
     res.json(bookings);
 });
 
@@ -95,7 +97,8 @@ const getBookings = asyncHandler(async (req, res) => {
 const getBookingById = asyncHandler(async (req, res) => {
     const booking = await Booking.findById(req.params.id)
         .populate('client', 'name email phone')
-        .populate('bookedBy', 'name email');
+        .populate('bookedBy', 'name email')
+        .select('+designs'); // Explicitly select the designs field
 
     if (booking) {
         res.json(booking);
@@ -109,7 +112,7 @@ const getBookingById = asyncHandler(async (req, res) => {
 // @route   PUT /api/bookings/:id
 // @access  Private (Admin/Staff)
 const updateBooking = asyncHandler(async (req, res) => {
-    const { client, bookingDate, status, notes, deliveryDate, design, price, payment, reminderDate } = req.body;
+    const { client, bookingDate, status, notes, deliveryDate, designs, price, payment, reminderDate } = req.body;
 
     const booking = await Booking.findById(req.params.id).populate('client', 'name'); // Populate client to get name
 
@@ -131,7 +134,7 @@ const updateBooking = asyncHandler(async (req, res) => {
         booking.status = status || booking.status;
         booking.notes = notes || booking.notes;
         booking.reminderDate = reminderDate || booking.reminderDate;
-        design && (booking.design = design); // Update design if provided
+        booking.designs = designs || booking.designs; // Update designs if provided
         booking.price = price || booking.price;
         booking.payment = payment || booking.payment;
 

@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { theme } from '../styles/theme';
 import ImageZoomModal from './ImageZoomModal';
 
-const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
-    const { client, service, deliveryDate, status, price, payment } = booking;
-    const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
+const { width: screenWidth } = Dimensions.get('window');
 
-    const openZoomModal = () => setIsZoomModalVisible(true);
+const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
+    const { client, designs, deliveryDate, status, price, payment, syncStatus } = booking;
+   
+    const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
+    const [zoomedImageIndex, setZoomedImageIndex] = useState(0);
+
+    const openZoomModal = (index) => {
+        setZoomedImageIndex(index);
+        setIsZoomModalVisible(true);
+    };
     const closeZoomModal = () => setIsZoomModalVisible(false);
 
     const getStatusStyle = (status) => {
@@ -42,23 +49,46 @@ const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
         }
     };
 
+    const renderSyncStatusIcon = () => {
+        if (syncStatus === 'pending') {
+            return <Ionicons name="cloud-upload-outline" size={18} color={theme.COLORS.warning} style={styles.syncIcon} />;
+        } else if (syncStatus === 'error') {
+            return <Ionicons name="alert-circle-outline" size={18} color={theme.COLORS.danger} style={styles.syncIcon} />;
+        }
+        return null;
+    };
+
     const statusStyle = getStatusStyle(status);
     const amountRemaining = price - payment;
+   
 
     return (
         <TouchableOpacity style={styles.card} onPress={onView}>
             <View style={styles.cardHeader}>
-                <Text style={styles.clientName} numberOfLines={1}>{client?.name || 'N/A'}</Text>
+                <View style={styles.clientNameContainer}>
+                    <Text style={styles.clientName} numberOfLines={1}>{client?.name || 'N/A'}</Text>
+                    {renderSyncStatusIcon()}
+                </View>
                 <View style={[styles.statusBadge, { borderColor: statusStyle.borderColor }]}>
                     <Text style={[styles.statusText, { color: statusStyle.color }]}>{status}</Text>
                 </View>
             </View>
 
             <View style={styles.cardBody}>
-                {booking.design && (
-                    <TouchableOpacity onPress={openZoomModal}>
-                        <Image source={{ uri: booking.design }} style={styles.designImage} />
-                    </TouchableOpacity>
+                {designs && designs.length > 0 && (
+                    designs.length === 1 ? (
+                        <TouchableOpacity onPress={() => openZoomModal(0)}>
+                            <Image source={{ uri: designs[0] }} style={{ width: screenWidth * 0.8, height: 200, resizeMode: 'cover', borderRadius: theme.BORDERRADIUS.sm, marginBottom: theme.SPACING.sm, backgroundColor: theme.COLORS.lightGray, borderWidth: 1, borderColor: theme.COLORS.border }} />
+                        </TouchableOpacity>
+                    ) : (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.designsScrollView}>
+                            {designs.map((designUri, index) => (
+                                <TouchableOpacity key={index} onPress={() => openZoomModal(index)}>
+                                    <Image source={{ uri: designUri }} style={{ width: designs.length === 2 ? screenWidth * 0.4 : 80, height: designs.length === 2 ? 150 : 80, borderRadius: theme.BORDERRADIUS.sm, marginRight: theme.SPACING.xs, backgroundColor: theme.COLORS.lightGray, borderWidth: 1, borderColor: theme.COLORS.border }} />
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    )
                 )}
                 <Text style={styles.service} numberOfLines={1}>{booking.notes}</Text>
                 <View style={styles.dateContainer}>
@@ -69,17 +99,7 @@ const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
                 </View>
             </View>
 
-            {client?.measurements && Object.keys(client.measurements).length > 0 && (
-                <View style={styles.measurementsSection}>
-                    <Text style={styles.measurementsTitle}>Client Measurements</Text>
-                    {Object.entries(client.measurements).map(([key, value]) => (
-                        <View style={styles.measurementRow} key={key}>
-                            <Text style={styles.measurementLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}:</Text>
-                            <Text style={styles.measurementValue}>{value}</Text>
-                        </View>
-                    ))}
-                </View>
-            )}
+            
 
             <View style={styles.financials}>
                 <View style={styles.financialItem}>
@@ -117,11 +137,13 @@ const BookingCard = ({ booking, onView, onEdit, onDelete, onComplete }) => {
                 </TouchableOpacity>
             </View>
 
-            {booking.design && (
+            {designs && designs.length > 0 && (
                 <ImageZoomModal
-                    imageUrl={booking.design}
+                    imageUrl={designs[zoomedImageIndex]}
+                    imageUrls={designs}
                     visible={isZoomModalVisible}
                     onClose={closeZoomModal}
+                    initialImageIndex={zoomedImageIndex}
                 />
             )}
         </TouchableOpacity>
@@ -177,6 +199,38 @@ const styles = StyleSheet.create({
         borderRadius: theme.BORDERRADIUS.sm,
         marginBottom: theme.SPACING.sm,
     },
+    designsScrollView: {
+        marginBottom: theme.SPACING.sm,
+    },
+    designImageSmall: {
+        width: 80,
+        height: 80,
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginRight: theme.SPACING.xs,
+        backgroundColor: theme.COLORS.lightGray,
+        borderWidth: 1,
+        borderColor: theme.COLORS.border,
+    },
+    designImageLarge: {
+        width: '100%',
+        height: 200, // Adjust height as needed
+        resizeMode: 'cover',
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginBottom: theme.SPACING.sm,
+        backgroundColor: theme.COLORS.lightGray,
+        borderWidth: 1,
+        borderColor: theme.COLORS.border,
+    },
+    designImageLarge: {
+        width: '100%',
+        height: 200, // Adjust height as needed
+        resizeMode: 'cover',
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginBottom: theme.SPACING.sm,
+        backgroundColor: theme.COLORS.lightGray,
+        borderWidth: 1,
+        borderColor: theme.COLORS.border,
+    },
     dateContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -222,31 +276,14 @@ const styles = StyleSheet.create({
         fontSize: theme.FONT_SIZES.sm,
         color: theme.COLORS.textDark,
     },
-    measurementsSection: {
-        borderTopWidth: 1,
-        borderTopColor: theme.COLORS.border,
-        paddingTop: theme.SPACING.md,
-        marginBottom: theme.SPACING.md,
-    },
-    measurementsTitle: {
-        fontSize: theme.FONT_SIZES.body,
-        fontWeight: 'bold',
-        color: theme.COLORS.primary,
-        marginBottom: theme.SPACING.sm,
-    },
-    measurementRow: {
+    
+    clientNameContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: theme.SPACING.xs,
+        alignItems: 'center',
+        flex: 1,
     },
-    measurementLabel: {
-        fontSize: theme.FONT_SIZES.sm,
-        color: theme.COLORS.textMedium,
-    },
-    measurementValue: {
-        fontSize: theme.FONT_SIZES.sm,
-        color: theme.COLORS.textDark,
-        fontWeight: '600',
+    syncIcon: {
+        marginLeft: theme.SPACING.xs,
     },
 });
 

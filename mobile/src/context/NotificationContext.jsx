@@ -1,35 +1,63 @@
-import React, { createContext, useState, useContext } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
 import { theme } from '../styles/theme';
+
+const { height } = Dimensions.get('window');
 
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
     const [notification, setNotification] = useState(null);
-    const fadeAnim = useState(new Animated.Value(0))[0];
+    const fadeAnim = useRef(new Animated.Value(0)).current; // Initial value for opacity: 0
+    const slideAnim = useRef(new Animated.Value(-height)).current; // Initial value for slide: off-screen top
 
-    const showNotification = (message, type = 'success') => {
+    const showNotification = useCallback((message, type = 'success') => {
         setNotification({ message, type });
-        Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-        }).start(() => {
-            setTimeout(() => {
-                hideNotification();
-            }, 3000);
-        });
-    };
+        // Reset animation values before starting
+        fadeAnim.setValue(0);
+        slideAnim.setValue(-height);
 
-    const hideNotification = () => {
-        Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-        }).start(() => {
-            setNotification(null);
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0, // Slide to top of screen
+                duration: 300,
+                useNativeDriver: true,
+            }),
+        ]).start(() => {
+            setTimeout(() => {
+                Animated.parallel([
+                    Animated.timing(fadeAnim, {
+                        toValue: 0,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(slideAnim, {
+                        toValue: -height, // Slide back off-screen top
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                ]).start(() => {
+                    setNotification(null);
+                });
+            }, 3000); // Notification visible for 3 seconds
         });
-    };
+    }, [fadeAnim, slideAnim]);
+
+    // Clear notification when component unmounts or notification changes unexpectedly
+    useEffect(() => {
+        return () => {
+            fadeAnim.setValue(0);
+            slideAnim.setValue(-height);
+            if (notification) {
+                setNotification(null);
+            }
+        };
+    }, [notification, fadeAnim, slideAnim]);
 
     return (
         <NotificationContext.Provider value={{ showNotification }}>
@@ -41,6 +69,7 @@ export const NotificationProvider = ({ children }) => {
                         {
                             backgroundColor: notification.type === 'success' ? theme.COLORS.success : theme.COLORS.error,
                             opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
                         },
                     ]}
                 >
@@ -55,17 +84,25 @@ export const useNotification = () => useContext(NotificationContext);
 
 const styles = StyleSheet.create({
     notification: {
-        marginTop: 40,
         position: 'absolute',
-        top: 50,
-        left: 20,
-        right: 20,
+        top: 0,
+        left: 0,
+        right: 0,
         padding: theme.SPACING.md,
+        paddingTop: theme.SPACING.xxl,
         borderRadius: theme.BORDERRADIUS.sm,
         zIndex: 1000,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     notificationText: {
         color: '#fff',
         textAlign: 'center',
+        fontWeight: 'bold',
     },
 });

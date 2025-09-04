@@ -61,7 +61,7 @@ const LoginScreen = ({ navigation }) => {
                 />
                 <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
                     {loading ? (
-                        <ActivityIndicator color={theme.COLORS.primary} />
+                        <ActivityIndicator color={theme.COLORS.textLight} />
                     ) : (
                         <Text style={styles.buttonText}>Login</Text>
                     )}
@@ -90,8 +90,8 @@ const styles = StyleSheet.create({
     input: {
         width: '100%',
         height: 45,
-        backgroundColor: 'rgba(248,243,242,0.91)',
-        borderRadius: 15,
+        backgroundColor: theme.COLORS.backgroundCard,
+        borderRadius: theme.BORDERRADIUS.xl,
         paddingHorizontal: theme.SPACING.md,
         marginBottom: theme.SPACING.md,
         color: theme.COLORS.textDark,
@@ -107,14 +107,14 @@ const styles = StyleSheet.create({
         width: '100%',
         backgroundColor: theme.COLORS.darkPrimary,
         padding: theme.SPACING.sm,
-        borderRadius: 15,
+        borderRadius: theme.BORDERRADIUS.xl,
         alignItems: 'center',
         justifyContent: 'center',
         height: 45,
         marginBottom: theme.SPACING.md, // Adjusted margin for consistency
     },
     buttonText: {
-        color: theme.COLORS.primary,
+        color: theme.COLORS.textLight,
         fontSize: theme.FONT_SIZES.button,
         fontWeight: 'bold',
     },

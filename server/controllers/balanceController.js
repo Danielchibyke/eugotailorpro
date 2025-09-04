@@ -9,6 +9,7 @@ import { sendPushNotification } from './notificationController.js'; // Import no
 // @access  Private (Admin/Staff)
 const setLastBalancedDate = asyncHandler(async (req, res) => {
     const { date, cashBalance, bankBalance } = req.body;
+    console.log('Setting last balanced date:', date, 'Cash:', cashBalance, 'Bank:', bankBalance);   
 
     if (!date || cashBalance === undefined || bankBalance === undefined) {
         res.status(400);
@@ -81,7 +82,8 @@ const getLatestBalanceRecord = asyncHandler(async (req, res) => {
 // @route   GET /api/balances
 // @access  Private (Admin/Staff)
 const getAllBalanceRecords = asyncHandler(async (req, res) => {
-    const records = await BalanceRecord.find({}).sort({ lastBalancedDate: 'asc' });
+    const records = await BalanceRecord.find({}).sort({ lastBalancedDate: 'asc' })
+        .populate('recordedBy', 'name email'); // Populate recordedBy info
     res.json(records);
 });
 

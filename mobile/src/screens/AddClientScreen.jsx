@@ -6,20 +6,20 @@ import {
     TouchableOpacity,
     StyleSheet,
     ScrollView,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useRealm } from '../config/realmConfig';
 import BackgroundContainer from '../components/BackgroundContainer';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { useNotification } from '../context/NotificationContext';
-import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { getApi } from '../utils/api'; // Add API import
 import { theme } from '../styles/theme';
 
-// Helper component for measurement inputs to handle both single and array values
+// Helper component for measurement inputs
 const MeasurementInput = ({ label, value, onChange, keyboardType = 'numeric' }) => {
     const isArray = Array.isArray(value);
-
     return (
         <View style={styles.measurementRow}>
             <Text style={styles.measurementLabel}>{label}</Text>
@@ -51,10 +51,9 @@ const MeasurementInput = ({ label, value, onChange, keyboardType = 'numeric' }) 
     );
 };
 
-
 const AddClientScreen = ({ navigation, route }) => {
     const { client } = route.params || {};
-    const realm = useRealm();
+    const { user } = useAuth();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -62,43 +61,43 @@ const AddClientScreen = ({ navigation, route }) => {
         address: '',
         notes: '',
         measurement: {
-            neck: '', shoulder: '', chest: ['', ''], sleeveLength: ['', '', ''], roundsleeve: ['', '', ''], toplength: '',
-            waist: '', thigh: '', knee: '', ankle: '', trouserlength: '',
-        },
+            chest: [0, 0],
+            waist: 0,
+            roundsleeve: [0, 0, 0],
+            shoulder: 0,
+            toplength: 0,
+            trouserlength: 0,
+            thigh: 0,
+            knee: 0,
+            ankle: 0,
+            neck: 0,
+            sleeveLength: [0, 0, 0],
+        }
     });
+    const [loading, setLoading] = useState(false);
     const { showNotification } = useNotification();
 
     useEffect(() => {
         if (client) {
-            const initialMeasurement = {
-                neck: '', shoulder: '', chest: ['', ''], sleeveLength: ['', '', ''], roundsleeve: ['', '', ''], toplength: '',
-                waist: '', thigh: '', knee: '', ankle: '', trouserlength: '',
-            };
-            
-            const newMeasurement = { ...initialMeasurement };
-            if (client.measurement) {
-                for (const key in newMeasurement) {
-                    if (client.measurement[key] !== undefined) {
-                        if (Array.isArray(newMeasurement[key])) {
-                            const newArray = [...newMeasurement[key]];
-                            for (let i = 0; i < newArray.length; i++) {
-                                newArray[i] = client.measurement[key][i] ?? '';
-                            }
-                            newMeasurement[key] = newArray;
-                        } else {
-                            newMeasurement[key] = client.measurement[key];
-                        }
-                    }
-                }
-            }
-
             setFormData({
                 name: client.name || '',
                 email: client.email || '',
                 phone: client.phone || '',
                 address: client.address || '',
                 notes: client.notes || '',
-                measurement: newMeasurement,
+                measurement: client.measurement || {
+                    chest: [0, 0],
+                    waist: 0,
+                    roundsleeve: [0, 0, 0],
+                    shoulder: 0,
+                    toplength: 0,
+                    trouserlength: 0,
+                    thigh: 0,
+                    knee: 0,
+                    ankle: 0,
+                    neck: 0,
+                    sleeveLength: [0, 0, 0],
+                }
             });
         }
     }, [client]);
@@ -108,15 +107,15 @@ const AddClientScreen = ({ navigation, route }) => {
     };
 
     const handleMeasurementChange = (field, value, index = null) => {
-        const newMeasurement = { ...formData.measurement };
-        if (index !== null) {
-            const newArray = [...newMeasurement[field]];
-            newArray[index] = value;
-            newMeasurement[field] = newArray;
-        } else {
-            newMeasurement[field] = value;
-        }
-        setFormData({ ...formData, measurement: newMeasurement });
+        setFormData(prev => ({
+            ...prev,
+            measurement: {
+                ...prev.measurement,
+                [field]: index !== null 
+                    ? prev.measurement[field].map((item, i) => i === index ? parseFloat(value) || 0 : item)
+                    : parseFloat(value) || 0
+            }
+        }));
     };
 
     const handleSaveClient = async () => {
@@ -125,78 +124,54 @@ const AddClientScreen = ({ navigation, route }) => {
             return;
         }
 
-        const payload = {
-            ...formData,
-            measurement: Object.entries(formData.measurement).reduce((acc, [key, value]) => {
-                if (Array.isArray(value)) {
-                    acc[key] = value.map(v => parseFloat(v) || 0);
-                } else {
-                    acc[key] = parseFloat(value) || 0;
-                }
-                return acc;
-            }, {}),
-        };
+        setLoading(true);
+        try {
+            const payload = {
+                ...formData,
+                createdBy: user._id
+            };
 
-        if (client) {
-            // Update existing client
-            realm.write(() => {
-                client.name = payload.name;
-                client.email = payload.email;
-                client.phone = payload.phone;
-                client.address = payload.address;
-                client.notes = payload.notes;
-                client.measurement = payload.measurement;
-                client.syncStatus = 'pending';
-            });
-            showNotification('Client updated locally.', 'info');
-            navigation.goBack();
-
-            try {
-                const { data } = await api.put(`/clients/${client._id}`, payload);
-                realm.write(() => {
-                    client.syncStatus = 'synced';
-                    client.updatedAt = new Date(data.updatedAt);
-                });
-                showNotification('Client changes synced successfully!', 'success');
-            } catch (err) {
-                realm.write(() => {
-                    client.syncStatus = 'error';
-                });
-                showNotification(err.response?.data?.msg || 'Failed to sync client changes.', 'error');
+            if (client) {
+                // Update existing client
+                await getApi().put(`/clients/${client._id}`, payload);
+                showNotification('Client updated successfully!', 'success');
+            } else {
+                // Create new client
+                await getApi().post('/clients', payload);
+                showNotification('Client added successfully!', 'success');
             }
-        } else {
-            // Create new client
-            let newClient;
-            realm.write(() => {
-                newClient = realm.create('Client', {
-                    ...payload,
-                    _id: new Realm.BSON.ObjectId(),
-                    createdBy: new Realm.BSON.ObjectId(), // This should be the current user's ID
-                    syncStatus: 'pending',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                });
-            });
-            showNotification('Client added locally.', 'info');
             navigation.goBack();
-
-            try {
-                const { data } = await api.post('/clients', payload);
-                realm.write(() => {
-                    // This is tricky because the server creates a new ID.
-                    // For now, we'll just mark the local one as synced.
-                    // A more robust solution would be to update the local ID with the server's ID.
-                    newClient.syncStatus = 'synced';
-                    newClient.updatedAt = new Date(data.updatedAt);
-                });
-                showNotification('New client synced successfully!', 'success');
-            } catch (err) {
-                realm.write(() => {
-                    newClient.syncStatus = 'error';
-                });
-                showNotification(err.response?.data?.msg || 'Failed to sync new client.', 'error');
-            }
+        } catch (err) {
+            console.error('Failed to save client:', err);
+            showNotification(err.response?.data?.msg || 'Failed to save client.', 'error');
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const handleDeleteClient = () => {
+        if (!client) return;
+
+        Alert.alert(
+            'Delete Client',
+            'Are you sure you want to delete this client? This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await getApi().delete(`/clients/${client._id}`);
+                            showNotification('Client deleted successfully!', 'success');
+                            navigation.goBack();
+                        } catch (err) {
+                            showNotification(err.response?.data?.msg || 'Failed to delete client.', 'error');
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     return (
@@ -241,21 +216,66 @@ const AddClientScreen = ({ navigation, route }) => {
                         onChangeText={(value) => handleInputChange('address', value)}
                         placeholder="Enter client's address"
                         placeholderTextColor={theme.COLORS.textMedium}
+                        multiline
                     />
                 </View>
 
                 <CollapsibleSection title="Measurements">
-                    <MeasurementInput label="Neck (N)" value={formData.measurement.neck} onChange={(v) => handleMeasurementChange('neck', v)} />
-                    <MeasurementInput label="Shoulder (SH)" value={formData.measurement.shoulder} onChange={(v) => handleMeasurementChange('shoulder', v)} />
-                    <MeasurementInput label="Chest (CH)" value={formData.measurement.chest} onChange={(v, i) => handleMeasurementChange('chest', v, i)} />
-                    <MeasurementInput label="Sleeve Length (SL)" value={formData.measurement.sleeveLength} onChange={(v, i) => handleMeasurementChange('sleeveLength', v, i)} />
-                    <MeasurementInput label="Round Sleeve (RS)" value={formData.measurement.roundsleeve} onChange={(v, i) => handleMeasurementChange('roundsleeve', v, i)} />
-                    <MeasurementInput label="Top Length (L)" value={formData.measurement.toplength} onChange={(v) => handleMeasurementChange('toplength', v)} />
-                    <MeasurementInput label="Waist (W)" value={formData.measurement.waist} onChange={(v) => handleMeasurementChange('waist', v)} />
-                    <MeasurementInput label="Thigh (T)" value={formData.measurement.thigh} onChange={(v) => handleMeasurementChange('thigh', v)} />
-                    <MeasurementInput label="Knee (K)" value={formData.measurement.knee} onChange={(v) => handleMeasurementChange('knee', v)} />
-                    <MeasurementInput label="Ankle (A)" value={formData.measurement.ankle} onChange={(v) => handleMeasurementChange('ankle', v)} />
-                    <MeasurementInput label="Trouser Length (L)" value={formData.measurement.trouserlength} onChange={(v) => handleMeasurementChange('trouserlength', v)} />
+                    <MeasurementInput 
+                        label="Neck" 
+                        value={formData.measurement.neck} 
+                        onChange={(v) => handleMeasurementChange('neck', v)} 
+                    />
+                    <MeasurementInput 
+                        label="Shoulder" 
+                        value={formData.measurement.shoulder} 
+                        onChange={(v) => handleMeasurementChange('shoulder', v)} 
+                    />
+                    <MeasurementInput 
+                        label="Chest" 
+                        value={formData.measurement.chest} 
+                        onChange={(v, i) => handleMeasurementChange('chest', v, i)} 
+                    />
+                    <MeasurementInput 
+                        label="Sleeve Length" 
+                        value={formData.measurement.sleeveLength} 
+                        onChange={(v, i) => handleMeasurementChange('sleeveLength', v, i)} 
+                    />
+                    <MeasurementInput 
+                        label="Round Sleeve" 
+                        value={formData.measurement.roundsleeve} 
+                        onChange={(v, i) => handleMeasurementChange('roundsleeve', v, i)} 
+                    />
+                    <MeasurementInput 
+                        label="Top Length" 
+                        value={formData.measurement.toplength} 
+                        onChange={(v) => handleMeasurementChange('toplength', v)} 
+                    />
+                    <MeasurementInput 
+                        label="Waist" 
+                        value={formData.measurement.waist} 
+                        onChange={(v) => handleMeasurementChange('waist', v)} 
+                    />
+                    <MeasurementInput 
+                        label="Thigh" 
+                        value={formData.measurement.thigh} 
+                        onChange={(v) => handleMeasurementChange('thigh', v)} 
+                    />
+                    <MeasurementInput 
+                        label="Knee" 
+                        value={formData.measurement.knee} 
+                        onChange={(v) => handleMeasurementChange('knee', v)} 
+                    />
+                    <MeasurementInput 
+                        label="Ankle" 
+                        value={formData.measurement.ankle} 
+                        onChange={(v) => handleMeasurementChange('ankle', v)} 
+                    />
+                    <MeasurementInput 
+                        label="Trouser Length" 
+                        value={formData.measurement.trouserlength} 
+                        onChange={(v) => handleMeasurementChange('trouserlength', v)} 
+                    />
                 </CollapsibleSection>
 
                 <View style={styles.formContainer}>
@@ -270,10 +290,27 @@ const AddClientScreen = ({ navigation, route }) => {
                     />
                 </View>
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSaveClient}>
+                <TouchableOpacity 
+                    style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+                    onPress={handleSaveClient}
+                    disabled={loading}
+                >
                     <Ionicons name="save-outline" size={24} color={theme.COLORS.textLight} />
-                    <Text style={styles.saveButtonText}>{client ? 'Save Changes' : 'Add Client'}</Text>
+                    <Text style={styles.saveButtonText}>
+                        {loading ? 'Saving...' : (client ? 'Save Changes' : 'Add Client')}
+                    </Text>
                 </TouchableOpacity>
+
+                {client && (
+                    <TouchableOpacity 
+                        style={[styles.deleteButton, loading && styles.deleteButtonDisabled]} 
+                        onPress={handleDeleteClient}
+                        disabled={loading}
+                    >
+                        <Ionicons name="trash-outline" size={24} color={theme.COLORS.textLight} />
+                        <Text style={styles.deleteButtonText}>Delete Client</Text>
+                    </TouchableOpacity>
+                )}
             </ScrollView>
         </BackgroundContainer>
     );
@@ -359,7 +396,30 @@ const styles = StyleSheet.create({
         borderRadius: theme.BORDERRADIUS.md,
         marginTop: theme.SPACING.lg,
     },
+    saveButtonDisabled: {
+        backgroundColor: theme.COLORS.textMedium,
+        opacity: 0.7,
+    },
     saveButtonText: {
+        color: theme.COLORS.textLight,
+        fontWeight: 'bold',
+        fontSize: theme.FONT_SIZES.button,
+        marginLeft: theme.SPACING.sm,
+    },
+    deleteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.COLORS.danger,
+        padding: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.md,
+        marginTop: theme.SPACING.md,
+    },
+    deleteButtonDisabled: {
+        backgroundColor: theme.COLORS.textMedium,
+        opacity: 0.7,
+    },
+    deleteButtonText: {
         color: theme.COLORS.textLight,
         fontWeight: 'bold',
         fontSize: theme.FONT_SIZES.button,

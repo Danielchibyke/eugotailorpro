@@ -1,1 +1,6 @@
- ERROR  Failed to update profile: [TypeError: setUser is not a function (it is undefined)]
+ ERROR  Warning: Error: A navigator can only contain 'Screen', 'Group' or 'React.Fragment' as its direct children (found ' '). To render this component in the navigator, pass it in the 'component' prop to 'Screen'.
+
+This error is located at:
+
+Call Stack
+  MainStack (<anonymous>)

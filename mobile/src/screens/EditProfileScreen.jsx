@@ -11,36 +11,46 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../utils/api';
+import { getApi } from '../utils/api';
+import { useNotification } from '../context/NotificationContext';
 
 const EditProfileScreen = ({ navigation }) => {
-    const { user, setUser } = useAuth();
+    const { user, updateRealmUser } = useAuth(); // Get updateRealmUser from AuthContext
     const [name, setName] = useState(user?.name || '');
     const [email, setEmail] = useState(user?.email || '');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const { showNotification } = useNotification();
 
     const handleUpdate = async () => {
         if (password !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match.');
+            showNotification('Passwords do not match.', 'error');
             return;
         }
 
         setLoading(true);
         try {
-            const updatedData = { name, email };
+            // Update user in Realm via AuthContext
+            const updatedUserData = {
+                _id: user._id.toHexString(), // Pass ID as string
+                name: name,
+                email: email,
+                expoPushToken: user.expoPushToken, // Keep existing token
+            };
+            updateRealmUser(updatedUserData);
+
+            // Handle password change separately, as it requires direct API interaction
             if (password) {
-                updatedData.password = password;
+                await getApi().put(`/auth/profile`, { password });
+                showNotification('Password updated successfully.', 'success');
             }
 
-            const response = await api.put(`/auth/profile`, updatedData);
-            setUser(response.data.user);
-            Alert.alert('Success', 'Profile updated successfully.');
+            showNotification('Profile updated locally. Syncing when online...', 'success');
             navigation.goBack();
         } catch (error) {
             console.error('Failed to update profile:', error);
-            Alert.alert('Error', 'Failed to update profile. Please try again.');
+            showNotification(error.response?.data?.msg || 'Failed to update profile. Please try again.', 'error');
         } finally {
             setLoading(false);
         }

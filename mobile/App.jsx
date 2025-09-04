@@ -1,25 +1,33 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { AuthProvider, setAuthLogoutCallback, useAuth } from './src/context/AuthContext'; // Import useAuth
-import { NotificationProvider } from './src/context/NotificationContext';
+import { ActivityIndicator, View, Text,  } from 'react-native';
+import { AuthProvider, useAuth } from './src/context/AuthContext'; // Import useAuth
+import { NotificationProvider, useNotification } from './src/context/NotificationContext';
 import AppNavigator from './src/navigation/AppNavigator';
-import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import { RealmProvider } from './src/config/realmConfig';
+import { initializeOfflineManager } from './src/utils/offlineManager';
 import './src/config/firebaseConfig'; // Import Firebase initialization
-import { setApiLogoutCallback } from './src/utils/api'; // Import setApiLogoutCallback
+import * as SplashScreen from 'expo-splash-screen'
+import { useFonts } from 'expo-font';
+
+import ErrorBoundary from './src/utils/ErrorBoundary';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+const AppContent = () => {
+  const { showNotification } = useNotification();
+
+  useEffect(() => {
+    initializeOfflineManager(showNotification);
+  }, [showNotification]);
+
+  return <AppNavigator />;
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
     'Ionicons': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
   });
-
-  // Ref to store the logout function
-  const logoutRef = useRef(null);
 
   useEffect(() => {
     async function prepare() {
@@ -35,14 +43,6 @@ export default function App() {
     prepare();
   }, []);
 
-  // Set the logout callback once AuthProvider is mounted
-  useEffect(() => {
-    if (logoutRef.current) {
-      setAuthLogoutCallback(logoutRef.current);
-      setApiLogoutCallback(logoutRef.current); // Set the logout callback for the API interceptor
-    }
-  }, []);
-
   if (!fontsLoaded) {
     return null;
   }
@@ -51,30 +51,13 @@ export default function App() {
     <View style={{ flex: 1 }} onLayout={async () => {
       await SplashScreen.hideAsync();
     }}>
-      <RealmProvider
-        fallback={() => (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" />
-          </View>
-        )}
-      >
-        <AuthProvider>
-          {/* Pass the logout function to a ref so it can be set globally */}
-          <AuthContextConsumer>{({ logout }) => {
-            logoutRef.current = logout;
-            return null;
-          }}</AuthContextConsumer>
-          <NotificationProvider>
-            <AppNavigator />
-          </NotificationProvider>
-        </AuthProvider>
-      </RealmProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
+          </AuthProvider>
+        </NotificationProvider>
     </View>
   );
 }
-
-// Helper component to access AuthContext within the render tree
-const AuthContextConsumer = ({ children }) => {
-  const auth = useAuth();
-  return children(auth);
-};

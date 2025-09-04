@@ -34,8 +34,8 @@ const bookingSchema = mongoose.Schema(
             ref: 'User',
         },
         
-        design: {
-            type: String, //url for the design image
+        designs: {
+            type: [String], //url for the design image
             required: true,
         },
         price: {
@@ -45,6 +45,10 @@ const bookingSchema = mongoose.Schema(
         payment: {
             type: Number,
             default: 0,
+        },
+        notificationSent: {
+            type: Boolean,
+            default: false,
         }
     },
     {

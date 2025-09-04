@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getApi } from '../utils/api';
 import { theme } from '../styles/theme';
 import BackgroundContainer from '../components/BackgroundContainer';
+import { Picker } from '@react-native-picker/picker';
 
 const RegisterScreen = ({ navigation }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [role, setRole] = useState('user');
     const [loading, setLoading] = useState(false);
-    const { register } = useAuth();
+    const { user } = useAuth();
     const { showNotification } = useNotification();
 
     const handleRegister = async () => {
@@ -20,9 +23,11 @@ const RegisterScreen = ({ navigation }) => {
         }
         setLoading(true);
         try {
-            await register(name, email, password);
+            await getApi().post('/auth/register', { name, email, password, role });
+            showNotification('User registered successfully!', 'success');
+            navigation.goBack();
         } catch (err) {
-            showNotification(err.response?.data?.msg || 'Registration failed. Please try again.', 'error');
+            showNotification(err.response?.data?.msg || 'Registration failed.', 'error');
         } finally {
             setLoading(false);
         }
@@ -31,7 +36,7 @@ const RegisterScreen = ({ navigation }) => {
     return (
         <BackgroundContainer>
             <View style={styles.container}>
-                <Text style={styles.title}>Register</Text>
+                <Text style={styles.title}>Register New User</Text>
                 <Text style={styles.inputLabel}>Name</Text>
                 <TextInput
                     style={styles.input}
@@ -47,6 +52,8 @@ const RegisterScreen = ({ navigation }) => {
                     onChangeText={setEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    autoCompleteType="email"
+                    textContentType="emailAddress"
                 />
                 <Text style={styles.inputLabel}>Password</Text>
                 <TextInput
@@ -56,15 +63,27 @@ const RegisterScreen = ({ navigation }) => {
                     onChangeText={setPassword}
                     secureTextEntry
                 />
+                {user?.role === 'admin' && (
+                    <>
+                        <Text style={styles.inputLabel}>Role</Text>
+                        <View style={styles.pickerContainer}>
+                            <Picker
+                                selectedValue={role}
+                                onValueChange={(itemValue) => setRole(itemValue)}
+                                style={styles.picker}
+                            >
+                                <Picker.Item label="User" value="user" />
+                                <Picker.Item label="Admin" value="admin" />
+                            </Picker>
+                        </View>
+                    </>
+                )}
                 <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
                     {loading ? (
-                        <ActivityIndicator color={theme.COLORS.primary} />
+                        <ActivityIndicator color={theme.COLORS.textLight} />
                     ) : (
                         <Text style={styles.buttonText}>Register</Text>
                     )}
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                    <Text style={styles.linkText}>Already have an account? Login</Text>
                 </TouchableOpacity>
             </View>
         </BackgroundContainer>
@@ -86,8 +105,8 @@ const styles = StyleSheet.create({
     input: {
         width: '100%',
         height: 45,
-        backgroundColor: 'rgba(248,243,242,0.91)',
-        borderRadius: 15,
+        backgroundColor: theme.COLORS.backgroundCard,
+        borderRadius: theme.BORDERRADIUS.xl,
         paddingHorizontal: theme.SPACING.md,
         marginBottom: theme.SPACING.md,
         color: theme.COLORS.textDark,
@@ -103,20 +122,27 @@ const styles = StyleSheet.create({
         width: '100%',
         backgroundColor: theme.COLORS.darkPrimary,
         padding: theme.SPACING.sm,
-        borderRadius: 15,
+        borderRadius: theme.BORDERRADIUS.xl,
         alignItems: 'center',
         justifyContent: 'center',
         height: 45,
-        marginBottom: theme.SPACING.md, // Adjusted margin for consistency
+        marginBottom: theme.SPACING.md,
     },
     buttonText: {
-        color: theme.COLORS.primary,
+        color: theme.COLORS.textLight,
         fontSize: theme.FONT_SIZES.button,
         fontWeight: 'bold',
     },
-    linkText: {
-        color: theme.COLORS.textLight,
-        marginTop: theme.SPACING.md,
+    pickerContainer: {
+        width: '100%',
+        height: 45,
+        backgroundColor: theme.COLORS.backgroundCard,
+        borderRadius: theme.BORDERRADIUS.xl,
+        marginBottom: theme.SPACING.md,
+        justifyContent: 'center',
+    },
+    picker: {
+        color: theme.COLORS.textDark,
     },
 });
 

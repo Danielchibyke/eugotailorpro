@@ -4,7 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 
 const ClientCard = ({ client, onView, onEdit, onDelete }) => {
-    const { name, phone, totalBookings } = client;
+    const { name, phone, totalBookings, syncStatus } = client;
+
+    const renderSyncStatusIcon = () => {
+        if (syncStatus === 'pending') {
+            return <Ionicons name="cloud-upload-outline" size={18} color={theme.COLORS.warning} style={styles.syncIcon} />;
+        } else if (syncStatus === 'error') {
+            return <Ionicons name="alert-circle-outline" size={18} color={theme.COLORS.danger} style={styles.syncIcon} />;
+        }
+        return null;
+    };
 
     return (
         <TouchableOpacity style={styles.card} onPress={onView}>
@@ -13,7 +22,10 @@ const ClientCard = ({ client, onView, onEdit, onDelete }) => {
                     <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
                 </View>
                 <View style={styles.headerTextContainer}>
-                    <Text style={styles.clientName} numberOfLines={1}>{name}</Text>
+                    <View style={styles.nameAndStatus}>
+                        <Text style={styles.clientName} numberOfLines={1}>{name}</Text>
+                        {renderSyncStatusIcon()}
+                    </View>
                     <Text style={styles.clientPhone} numberOfLines={1}>{phone}</Text>
                 </View>
             </View>
@@ -118,6 +130,13 @@ const styles = StyleSheet.create({
         marginLeft: theme.SPACING.xs,
         fontSize: theme.FONT_SIZES.sm,
         color: theme.COLORS.textDark,
+    },
+    nameAndStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    syncIcon: {
+        marginLeft: theme.SPACING.xs,
     },
 });
 

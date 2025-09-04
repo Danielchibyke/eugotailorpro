@@ -67,7 +67,7 @@ userSchema.methods.generateAccessToken = function () {
 // Method to Generate Refresh Token (long-lived, stored in DB)
 userSchema.methods.generateRefreshToken = function () {
     return jwt.sign({ id: this._id }, process.env.JWT_REFRESH_SECRET, {
-        expiresIn: '7d', // Refresh token expires in 7 days
+        expiresIn: '30d', // Refresh token expires in 30 days
     });
 };
 

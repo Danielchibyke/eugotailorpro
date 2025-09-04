@@ -34,6 +34,16 @@ const ProfileScreen = ({ navigation }) => {
             >
                 <Text style={styles.editProfileButtonText}>Edit Profile</Text>
             </TouchableOpacity>
+
+            {user?.role === 'admin' && (
+                <TouchableOpacity
+                    style={[styles.editProfileButton, styles.userManagementButton]}
+                    onPress={() => navigation.navigate('UserManagement')}
+                >
+                    <Text style={styles.editProfileButtonText}>User Management</Text>
+                </TouchableOpacity>
+            )}
+
             <TouchableOpacity style={styles.logoutButton} onPress={logout}>
                 <Text style={styles.logoutButtonText}>Logout</Text>
             </TouchableOpacity>
@@ -104,6 +114,10 @@ const styles = StyleSheet.create({
         color: theme.COLORS.white,
         fontWeight: 'bold',
         fontSize: theme.FONT_SIZES.md,
+    },
+    userManagementButton: {
+        marginTop: theme.SPACING.md,
+        backgroundColor: theme.COLORS.darkPrimary,
     },
 });
 

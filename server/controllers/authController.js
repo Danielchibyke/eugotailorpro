@@ -175,4 +175,75 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         throw new Error('User not found');
     }
 });
-export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile };
+
+// @desc    Get all users
+// @route   GET /api/auth/users
+// @access  Private/Admin (or accessible by any authenticated user for now)
+const getAllUsers = asyncHandler(async (req, res) => {
+    const users = await User.find({});
+    res.json(users);
+});
+
+// @desc    Update a user's role (Admin only)
+// @route   PUT /api/auth/users/:id/role
+// @access  Private/Admin
+const updateUserRole = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    // Validate role
+    if (!role || !['admin', 'staff', 'user'].includes(role)) {
+        res.status(400);
+        throw new Error('Invalid role provided. Role must be admin, staff, or user.');
+    }
+
+    const userToUpdate = await User.findById(id);
+
+    if (userToUpdate) {
+        userToUpdate.role = role;
+        const updatedUser = await userToUpdate.save();
+        res.json({
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            role: updatedUser.role,
+        });
+    } else {
+        res.status(404);
+        throw new Error('User not found');
+    }
+});
+
+// @desc    Delete a user (Admin only)
+// @route   DELETE /api/auth/users/:id
+// @access  Private/Admin
+const deleteUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const userToDelete = await User.findById(id);
+
+    if (!userToDelete) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Prevent admin from deleting themselves
+    if (userToDelete._id.toString() === req.user._id.toString()) {
+        res.status(400);
+        throw new Error('Cannot delete your own account');
+    }
+
+    // Prevent admin from deleting another admin if there's only one admin left
+    if (userToDelete.role === 'admin') {
+        const adminCount = await User.countDocuments({ role: 'admin' });
+        if (adminCount <= 1) {
+            res.status(400);
+            throw new Error('Cannot delete the last admin user');
+        }
+    }
+
+    await User.deleteOne({ _id: id });
+    res.json({ message: 'User removed successfully' });
+});
+
+export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser };

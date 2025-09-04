@@ -9,18 +9,18 @@ import {
     FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRealm, useObject } from '../config/realmConfig';
+
 import BackgroundContainer from '../components/BackgroundContainer';
 import CollapsibleSection from '../components/CollapsibleSection';
-import BookingCard from '../components/BookingCard'; // Re-use the BookingCard component
+import BookingCard from '../components/BookingCard';
 import { useNotification } from '../context/NotificationContext';
-import api from '../utils/api';
+import { getApi } from '../utils/api';
 import { theme } from '../styles/theme';
 
 const ClientDetailScreen = ({ route, navigation }) => {
     const { clientId } = route.params;
-    const realm = useRealm();
-    const client = useObject('Client', new Realm.BSON.ObjectId(clientId));
+    const [client, setClient] = useState(null);
+    const [bookingsForClient, setBookingsForClient] = useState([]);
     const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
 
@@ -28,87 +28,24 @@ const ClientDetailScreen = ({ route, navigation }) => {
         setLoading(true);
         try {
             const [clientRes, bookingsRes] = await Promise.all([
-                api.get(`/clients/${clientId}`),
-                api.get(`/bookings?client=${clientId}`), // Assuming the API supports filtering bookings by client
+                getApi().get(`/clients/${clientId}`),
+                getApi().get(`/bookings?client=${clientId}`),
             ]);
 
-            realm.write(() => {
-                // Update client data in Realm
-                if (client) {
-                    client.name = clientRes.data.name;
-                    client.email = clientRes.data.email || null;
-                    client.phone = clientRes.data.phone;
-                    client.address = clientRes.data.address || null;
-                    client.notes = clientRes.data.notes || null;
-                    client.measurement = clientRes.data.measurement ? {
-                        chest: clientRes.data.measurement.chest || [0, 0],
-                        waist: clientRes.data.measurement.waist || 0,
-                        roundsleeve: clientRes.data.measurement.roundsleeve || [0, 0, 0],
-                        shoulder: clientRes.data.measurement.shoulder || 0,
-                        toplength: clientRes.data.measurement.toplength || 0,
-                        trouserlength: clientRes.data.measurement.trouserlength || 0,
-                        thigh: clientRes.data.measurement.thigh || 0,
-                        knee: clientRes.data.measurement.knee || 0,
-                        ankle: clientRes.data.measurement.ankle || 0,
-                        neck: clientRes.data.measurement.neck || 0,
-                        sleeveLength: clientRes.data.measurement.sleeveLength || [0, 0, 0],
-                    } : {};
-                    client.updatedAt = new Date(clientRes.data.updatedAt);
-                }
-
-                // Clear existing bookings for this client and add fresh data
-                const existingBookingsForClient = realm.objects('Booking').filtered('client._id == $0', new Realm.BSON.ObjectId(clientId));
-                realm.delete(existingBookingsForClient);
-
-                bookingsRes.data.forEach(bookingData => {
-                    // Ensure client exists in Realm or create it (should already exist from client fetch, but good to be safe)
-                    let clientRealmObject = realm.objects('Client').filtered('_id == $0', new Realm.BSON.ObjectId(bookingData.client._id))[0];
-                    if (!clientRealmObject) {
-                        // This case should ideally not happen if client fetch was successful
-                        clientRealmObject = realm.create('Client', {
-                            _id: new Realm.BSON.ObjectId(bookingData.client._id),
-                            name: bookingData.client.name,
-                            phone: bookingData.client.phone,
-                            createdBy: new Realm.BSON.ObjectId(bookingData.client.createdBy),
-                            createdAt: new Date(bookingData.client.createdAt),
-                            updatedAt: new Date(bookingData.client.updatedAt),
-                        }, Realm.UpdateMode.Modified);
-                    }
-
-                    realm.create('Booking', {
-                        _id: new Realm.BSON.ObjectId(bookingData._id),
-                        client: clientRealmObject,
-                        bookingDate: new Date(bookingData.bookingDate),
-                        deliveryDate: new Date(bookingData.deliveryDate),
-                        status: bookingData.status,
-                        items: bookingData.items || [],
-                        totalAmount: bookingData.totalAmount,
-                        amountPaid: bookingData.amountPaid,
-                        balanceDue: bookingData.balanceDue,
-                        notes: bookingData.notes || null,
-                        createdBy: new Realm.BSON.ObjectId(bookingData.createdBy),
-                        createdAt: new Date(bookingData.createdAt),
-                        updatedAt: new Date(bookingData.updatedAt),
-                    }, Realm.UpdateMode.Modified);
-                });
-            });
-            showNotification('Client and bookings synced successfully!', 'success');
+            setClient(clientRes.data);
+            setBookingsForClient(bookingsRes.data);
         } catch (err) {
             console.error('Failed to fetch client data from API:', err);
-            showNotification(err.response?.data?.msg || 'Failed to fetch client data. Displaying cached data.', 'error');
+            showNotification(err.response?.data?.msg || 'Failed to fetch client data.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [clientId, showNotification, realm, client]);
+    }, [clientId, showNotification]);
 
     useEffect(() => {
-        // Initial load is handled by useObject, but we still want to fetch fresh data on focus
         const unsubscribe = navigation.addListener('focus', fetchClientData);
         return unsubscribe;
     }, [navigation, fetchClientData]);
-
-    // Get bookings for this client from Realm
-    const bookingsForClient = realm.objects('Booking').filtered('client._id == $0', new Realm.BSON.ObjectId(clientId)).sorted('bookingDate', true);
 
     const renderDetailItem = (icon, label, value) => (
         <View style={styles.detailItem}>
@@ -149,18 +86,12 @@ const ClientDetailScreen = ({ route, navigation }) => {
                     <Text style={styles.headerName}>{client.name}</Text>
                     <TouchableOpacity
                         style={styles.editButton}
-                        onPress={() => navigation.navigate('AddClient', { client: client.toJSON() })}
+                        onPress={() => navigation.navigate('AddClient', { client: client })} // Remove .toJSON()
                     >
                         <Ionicons name="create-outline" size={20} color={theme.COLORS.textLight} />
                         <Text style={styles.editButtonText}>Edit</Text>
                     </TouchableOpacity>
                 </View>
-
-                {client.syncStatus === 'pending' && (
-                    <View style={styles.syncBanner}>
-                        <Text style={styles.syncBannerText}>Awaiting Internet Connection to Sync</Text>
-                    </View>
-                )}
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Contact Information</Text>
@@ -170,16 +101,37 @@ const ClientDetailScreen = ({ route, navigation }) => {
                     {client.notes && renderDetailItem('document-text-outline', 'Notes', client.notes)}
                 </View>
 
-                {client.measurement && (
-                    <CollapsibleSection title="Measurements">
-                        {Object.entries(client.measurement).map(([key, value]) => (
-                             <View style={styles.measurementRow} key={key}>
-                                <Text style={styles.measurementLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
-                                <Text style={styles.measurementValue}>{Array.isArray(value) ? value.join(', ') : value}</Text>
-                            </View>
-                        ))}
-                    </CollapsibleSection>
-                )}
+                <TouchableOpacity
+                    style={styles.section}
+                    onPress={() => navigation.navigate('AddEditMeasurement', {
+                        measurements: client.measurements || {}, // Remove .toJSON()
+                        clientId: clientId,
+                    })}
+                >
+                    <View style={styles.measurementHeader}>
+                        <Text style={styles.sectionTitle}>Measurements</Text>
+                        <Ionicons name="chevron-forward-outline" size={24} color={theme.COLORS.primary} />
+                    </View>
+                    {client.measurements ? (
+                        <View style={styles.measurementsList}>
+                            {Object.entries(client.measurements).map(([key, value]) => {
+                                if (!value || (Array.isArray(value) && value.length === 0)) {
+                                    return null;
+                                }
+                                const formattedLabel = key.replace(/([A-Z])/g, ' $1').replace(/^./, function(str){ return str.toUpperCase(); });
+                                const formattedValue = Array.isArray(value) ? value.join(' - ') : value;
+                                return (
+                                    <View style={styles.measurementRow} key={key}>
+                                        <Text style={styles.measurementLabel}>{formattedLabel}</Text>
+                                        <Text style={styles.measurementValue}>{formattedValue}</Text>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    ) : (
+                        <Text style={styles.noMeasurementsText}>No measurements recorded. Tap to add.</Text>
+                    )}
+                </TouchableOpacity>
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Booking History</Text>
@@ -189,12 +141,12 @@ const ClientDetailScreen = ({ route, navigation }) => {
                             renderItem={({ item }) => (
                                 <BookingCard
                                     booking={item}
-                                    onView={() => navigation.navigate('BookingDetail', { bookingId: item._id.toHexString() })}
+                                    onView={() => navigation.navigate('BookingDetail', { bookingId: item._id })} // Remove .toHexString()
                                     // Pass other handlers if needed, or disable them
                                 />
                             )}
-                            keyExtractor={(item) => item._id.toHexString()}
-                            scrollEnabled={false} // To prevent nested scroll views issues
+                            keyExtractor={(item) => item._id} // Remove .toHexString()
+                            scrollEnabled={false}
                         />
                     ) : (
                         <Text style={styles.noBookingsText}>No bookings found for this client.</Text>
@@ -291,20 +243,24 @@ const styles = StyleSheet.create({
         textAlign: 'right',
     },
     measurementRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: theme.SPACING.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.COLORS.border,
+        width: '48%',
+        flexDirection: 'column',
+        marginBottom: theme.SPACING.md,
     },
     measurementLabel: {
         fontSize: theme.FONT_SIZES.body,
         color: theme.COLORS.textMedium,
         fontWeight: '600',
+        marginBottom: theme.SPACING.xs,
     },
     measurementValue: {
         fontSize: theme.FONT_SIZES.body,
         color: theme.COLORS.textDark,
+    },
+    measurementHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     noBookingsText: {
         textAlign: 'center',
@@ -323,6 +279,17 @@ const styles = StyleSheet.create({
     syncBannerText: {
         color: theme.COLORS.textLight,
         fontWeight: 'bold',
+    },
+    noMeasurementsText: {
+        textAlign: 'center',
+        color: theme.COLORS.textMedium,
+        paddingVertical: theme.SPACING.md,
+    },
+    measurementsList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginTop: theme.SPACING.sm,
     },
 });
 

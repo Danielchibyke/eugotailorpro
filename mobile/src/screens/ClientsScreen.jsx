@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -10,108 +10,50 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRealm, useQuery } from '../config/realmConfig';
+
 import BackgroundContainer from '../components/BackgroundContainer';
 import ClientCard from '../components/ClientCard';
 import { useNotification } from '../context/NotificationContext';
-import api from '../utils/api';
+import { getApi } from '../utils/api'; // Add API import
 import { theme } from '../styles/theme';
 
 const ClientsScreen = ({ navigation }) => {
-    const realm = useRealm();
-    const clientsFromRealm = useQuery('Client');
-    const [filteredClients, setFilteredClients] = useState([]);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
     const { showNotification } = useNotification();
 
-    const handleSearch = (query) => {
-        setSearchQuery(query);
-    };
-
-    const fetchClients = useCallback(async () => {
+    const fetchClients = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/clients');
-            realm.write(() => {
-                // Clear existing clients and add fresh data
-                realm.delete(clientsFromRealm);
-                data.forEach(clientData => {
-                    realm.create('Client', {
-                        _id: new Realm.BSON.ObjectId(clientData._id),
-                        name: clientData.name,
-                        email: clientData.email,
-                        phone: clientData.phone,
-                        address: clientData.address,
-                        notes: clientData.notes,
-                        createdBy: new Realm.BSON.ObjectId(clientData.createdBy),
-                        measurement: clientData.measurement ? {
-                            chest: (clientData.measurement.chest || []).map(v => parseInt(v, 10) || 0),
-                            waist: parseInt(clientData.measurement.waist, 10) || 0,
-                            roundsleeve: (clientData.measurement.roundsleeve || []).map(v => parseInt(v, 10) || 0),
-                            shoulder: parseInt(clientData.measurement.shoulder, 10) || 0,
-                            toplength: parseInt(clientData.measurement.toplength, 10) || 0,
-                            trouserlength: parseInt(clientData.measurement.trouserlength, 10) || 0,
-                            thigh: parseInt(clientData.measurement.thigh, 10) || 0,
-                            knee: parseInt(clientData.measurement.knee, 10) || 0,
-                            ankle: parseInt(clientData.measurement.ankle, 10) || 0,
-                            neck: parseInt(clientData.measurement.neck, 10) || 0,
-                            sleeveLength: (clientData.measurement.sleeveLength || []).map(v => parseInt(v, 10) || 0),
-                        } : null,
-                        createdAt: new Date(clientData.createdAt),
-                        updatedAt: new Date(clientData.updatedAt),
-                        syncStatus: 'synced',
-                    });
-                });
-            });
-            showNotification('Clients synced successfully!', 'success');
+            const { data } = await getApi().get('/clients');
+            setClients(data);
         } catch (err) {
-            console.error('Failed to fetch clients from API:', err);
-            showNotification(err.response?.data?.msg || 'Failed to fetch clients. Displaying cached data.', 'error');
+            console.error('Failed to fetch clients:', err);
+            showNotification(err.response?.data?.msg || 'Failed to fetch clients.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [realm, showNotification, clientsFromRealm]);
+    };
 
     useEffect(() => {
-        // Initial load from Realm
-        setFilteredClients(clientsFromRealm.sorted('name'));
-        setLoading(false);
-
-        // Listen for focus to refresh data from API
+        fetchClients();
         const unsubscribe = navigation.addListener('focus', fetchClients);
         return unsubscribe;
-    }, [navigation, fetchClients, clientsFromRealm]);
+    }, [navigation]);
 
-    useEffect(() => {
-        // Update filtered clients when Realm data changes or search query changes
-        if (searchQuery) {
-            const filtered = clientsFromRealm.filter((client) =>
-                client.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-            setFilteredClients(filtered.sorted('name'));
-        } else {
-            setFilteredClients(clientsFromRealm.sorted('name'));
-        }
-    }, [searchQuery, clientsFromRealm]);
-
-    const handleDeleteClient = (clientId) => {
+    const handleDeleteClient = async (clientId) => {
         Alert.alert(
             'Delete Client',
-            'Are you sure you want to delete this client? This action cannot be undone.',
+            'Are you sure you want to delete this client?',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            // Attempt to delete from API first
-                            await api.delete(`/clients/${clientId}`);
-                            // If successful, delete from Realm
-                            realm.write(() => {
-                                const clientToDelete = realm.objects('Client').filtered('_id == $0', new Realm.BSON.ObjectId(clientId));
-                                realm.delete(clientToDelete);
-                            });
+                            await getApi().delete(`/clients/${clientId}`);
+                            setClients(prev => prev.filter(client => client._id !== clientId));
                             showNotification('Client deleted successfully!', 'success');
                         } catch (err) {
                             showNotification(err.response?.data?.msg || 'Failed to delete client.', 'error');
@@ -123,13 +65,24 @@ const ClientsScreen = ({ navigation }) => {
         );
     };
 
+    const filteredClients = useMemo(() => {
+        let sortedClients = [...clients].sort((a, b) => a.name.localeCompare(b.name));
+
+        if (searchQuery) {
+            return sortedClients.filter((client) =>
+                client.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+        return sortedClients;
+    }, [searchQuery, clients]);
+
     const renderHeader = () => (
         <>
             <View style={styles.headerContainer}>
                 <Text style={styles.headerTitle}>Client Management</Text>
                 <View style={styles.balanceContainer}>
                     <Text style={styles.balanceLabel}>Total Clients</Text>
-                    <Text style={styles.balanceValue}>{clientsFromRealm.length}</Text>
+                    <Text style={styles.balanceValue}>{clients.length}</Text>
                 </View>
             </View>
             <View style={styles.searchContainer}>
@@ -138,14 +91,14 @@ const ClientsScreen = ({ navigation }) => {
                     style={styles.searchInput}
                     placeholder="Search by name..."
                     value={searchQuery}
-                    onChangeText={handleSearch}
+                    onChangeText={setSearchQuery}
                     placeholderTextColor={theme.COLORS.textMedium}
                 />
             </View>
         </>
     );
 
-    if (loading && clientsFromRealm.length === 0) {
+    if (loading && clients.length === 0) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.COLORS.primary} />
@@ -160,12 +113,12 @@ const ClientsScreen = ({ navigation }) => {
                 renderItem={({ item }) => (
                     <ClientCard
                         client={item}
-                        onView={() => navigation.navigate('ClientDetail', { clientId: item._id.toHexString() })}
-                        onEdit={() => navigation.navigate('AddClient', { client: item.toJSON() })}
-                        onDelete={() => handleDeleteClient(item._id.toHexString())}
+                        onView={() => navigation.navigate('ClientDetail', { clientId: item._id })}
+                        onEdit={() => navigation.navigate('AddClient', { client: item })}
+                        onDelete={() => handleDeleteClient(item._id)}
                     />
                 )}
-                keyExtractor={(item) => item._id.toHexString()}
+                keyExtractor={(item) => item._id}
                 ListHeaderComponent={renderHeader}
                 contentContainerStyle={styles.list}
                 ListEmptyComponent={
@@ -176,6 +129,8 @@ const ClientsScreen = ({ navigation }) => {
                         </Text>
                     </View>
                 }
+                refreshing={loading}
+                onRefresh={fetchClients}
             />
             <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddClient')}>
                 <Ionicons name="add" size={30} color={theme.COLORS.textLight} />
@@ -192,13 +147,13 @@ const styles = StyleSheet.create({
         backgroundColor: theme.COLORS.backgroundApp,
     },
     list: {
-        paddingBottom: 80, // Space for FAB
+        paddingBottom: 80,
     },
     headerContainer: {
         backgroundColor: theme.COLORS.primary,
         paddingHorizontal: theme.SPACING.lg,
         paddingTop: theme.SPACING.lg,
-        paddingBottom: theme.SPACING.xl, // More space for search bar overlap
+        paddingBottom: theme.SPACING.xl,
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30,
     },
@@ -227,7 +182,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.COLORS.backgroundCard,
         borderRadius: theme.BORDERRADIUS.md,
         marginHorizontal: theme.SPACING.lg,
-        marginTop: -theme.SPACING.xl + 10, // Overlap header
+        marginTop: -theme.SPACING.xl + 10,
         marginBottom: theme.SPACING.md,
         paddingHorizontal: theme.SPACING.md,
         elevation: 4,

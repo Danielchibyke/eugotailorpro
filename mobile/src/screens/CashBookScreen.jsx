@@ -7,176 +7,250 @@ import {
   TouchableOpacity, 
   ActivityIndicator,
   Modal,
-  Platform
+  Platform,
+  ScrollView,
+  Dimensions,
+  RefreshControl
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '../context/NotificationContext';
-import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { getApi } from '../utils/api';
 import theme from '../styles/theme';
 import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
 import BackgroundContainer from '../components/BackgroundContainer';
+import { Ionicons } from '@expo/vector-icons';
+import * as Progress from 'react-native-progress';
+import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
+import { chartColors } from '../styles/chartColors';
+import RNFS from 'react-native-fs';
+import Share from 'react-native-share';
+
+
+const { width } = Dimensions.get('window');
 
 const CashBookScreen = () => {
   const { showNotification } = useNotification();
   const navigation = useNavigation();
-  
-  // State
-  const [cashbookData, setCashbookData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [lastBalancedDate, setLastBalancedDate] = useState(null);
-  const [finalClosingBalance, setFinalClosingBalance] = useState(null);
-  const [filterStartDate, setFilterStartDate] = useState(null);
-  const [filterEndDate, setFilterEndDate] = useState(null);
-  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
-  const [currentPicker, setCurrentPicker] = useState('start');
+  const { user } = useAuth();
 
-  // Fetch data
+  const [transactions, setTransactions] = useState([]);
+  const [balanceRecords, setBalanceRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('cashbook'); // 'cashbook', 'analytics'
+
   const fetchCashBookData = useCallback(async () => {
     setLoading(true);
     try {
-      const [balancesRes, transactionsRes] = await Promise.all([
-        api.get('/balances'),
-        api.get('/transactions')
+      const [transactionsResponse, balanceRecordsResponse] = await Promise.all([
+        getApi().get('/transactions'),
+        getApi().get('/balances')
       ]);
-
-      const processedData = processCashBookData(
-        balancesRes.data,
-        transactionsRes.data
-      );
       
-      setCashbookData(processedData.rows);
-      setLastBalancedDate(processedData.lastBalancedDate);
-      setFinalClosingBalance(processedData.finalBalance);
+      const transactionsData = Array.isArray(transactionsResponse?.data) 
+        ? transactionsResponse.data 
+        : [];
+      
+      const balanceRecordsData = Array.isArray(balanceRecordsResponse?.data) 
+        ? balanceRecordsResponse.data 
+        : [];
+      
+      
+      
+      setTransactions(prev => {
+       
+        return transactionsResponse.data;
+      });
+      
+      setBalanceRecords(prev => {
+        
+        return balanceRecordsResponse.data;
+      });
+      
     } catch (error) {
-      console.error('Error fetching data:', error);
-      showNotification('Failed to load cashbook data', 'error');
+      console.log('API Error details:', {
+        message: error.message,
+        response: error.response,
+        config: error.config
+      });
+      showNotification(error.response?.data?.msg || 'Failed to fetch cashbook data.', 'error');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [showNotification]);
 
-  // Process data into cashbook format
-  const processCashBookData = (balances, transactions) => {
-    let rows = [];
-    let currentCashBalance = 0;
-    let currentBankBalance = 0;
-    let lastBalancedDate = null;
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchCashBookData();
+  }, [fetchCashBookData]);
 
-    // Find the latest balance record to set the initial opening balance
-    const latestBalanceRecord = balances.sort((a, b) => new Date(b.lastBalancedDate) - new Date(a.lastBalancedDate))[0];
+  useEffect(() => {
+    fetchCashBookData();
+    const unsubscribe = navigation.addListener('focus', fetchCashBookData);
+    return unsubscribe;
+  }, [navigation, fetchCashBookData]);
 
+  const [filterStartDate, setFilterStartDate] = useState(dayjs().subtract(30, 'days').toDate());
+  const [filterEndDate, setFilterEndDate] = useState(new Date());
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
+  const [currentPicker, setCurrentPicker] = useState('start');
+
+  const { rows: cashbookData, financialSummary, chartData, categoryChartData } = useMemo(() => {
+    let cashBalance = 0;
+    let bankBalance = 0;
+    let totalIncome = 0;
+    let totalExpense = 0;
+    let cashFlowData = [];
+    let categoryData = { income: {}, expense: {} };
+
+    const latestBalanceRecord = balanceRecords[0];
     if (latestBalanceRecord) {
-      currentCashBalance = latestBalanceRecord.cashBalance;
-      currentBankBalance = latestBalanceRecord.bankBalance;
-      lastBalancedDate = latestBalanceRecord.lastBalancedDate;
-
-      rows.push({
-        id: 'opening-balance',
-        type: 'balance',
-        date: latestBalanceRecord.lastBalancedDate,
-        particularsDebit: 'Opening Balance',
-        particularsCredit: '',
-        debitCash: currentCashBalance,
-        debitBank: currentBankBalance,
-        creditCash: null,
-        creditBank: null,
-        runningCash: currentCashBalance,
-        runningBank: currentBankBalance,
-      });
+      cashBalance = latestBalanceRecord.cashBalance;
+      bankBalance = latestBalanceRecord.bankBalance;
     }
 
-    // Sort transactions by date
-    const sortedTransactions = transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const rows = latestBalanceRecord ? [{
+      id: 'opening-balance',
+      type: 'balance',
+      date: latestBalanceRecord.lastBalancedDate,
+      particulars: 'Opening Balance',
+      debitCash: cashBalance,
+      debitBank: bankBalance,
+      creditCash: 0,
+      creditBank: 0,
+      balanceCash: cashBalance,
+      balanceBank: bankBalance,
+      isBalanceRecord: true
+    }] : [];
 
-    sortedTransactions.forEach(transaction => {
+const processedTransactions = transactions
+  .filter(t => {
+    if (!t.date) return false;
+    
+    const transactionDate = new Date(t.date);
+    if (isNaN(transactionDate.getTime())) return false;
+    
+    const transactionDay = new Date(transactionDate);
+    transactionDay.setHours(0, 0, 0, 0);
+    
+    const startDay = new Date(filterStartDate);
+    startDay.setHours(0, 0, 0, 0);
+    
+    const endDay = new Date(filterEndDate);
+    endDay.setHours(23, 59, 59, 999);
+    
+    return transactionDay >= startDay && transactionDay <= endDay;
+  })
+  .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  
+    processedTransactions.forEach(transaction => {
       const isCash = transaction.paymentMethod === 'Cash';
-      const isBank = transaction.paymentMethod === 'Bank Transfer' || transaction.paymentMethod === 'Card';
+      const isBank = transaction.paymentMethod === 'Bank';
+      const amount = transaction.amount;
 
-      const particulars = transaction.description || (transaction.client ? `Client: ${transaction.client.name}` : 'N/A');
+      if (transaction.type === 'income') {
+        totalIncome += amount;
+        if (isCash) cashBalance += amount;
+        if (isBank) bankBalance += amount;
 
-      if (transaction.type === 'Income') {
-        if (isCash) {
-          currentCashBalance += transaction.amount;
-        } else if (isBank) {
-          currentBankBalance += transaction.amount;
-        }
-        rows.push({
-          id: transaction._id,
-          type: 'income',
-          date: transaction.date,
-          particularsDebit: particulars,
-          particularsCredit: '',
-          debitCash: isCash ? transaction.amount : null,
-          debitBank: isBank ? transaction.amount : null,
-          creditCash: null,
-          creditBank: null,
-          runningCash: currentCashBalance,
-          runningBank: currentBankBalance,
-        });
-      } else if (transaction.type === 'Expense') {
-        if (isCash) {
-          currentCashBalance -= transaction.amount;
-        } else if (isBank) {
-          currentBankBalance -= transaction.amount;
-        }
-        rows.push({
-          id: transaction._id,
-          type: 'expense',
-          date: transaction.date,
-          particularsDebit: '',
-          particularsCredit: particulars,
-          debitCash: null,
-          debitBank: null,
-          creditCash: isCash ? transaction.amount : null,
-          creditBank: isBank ? transaction.amount : null,
-          runningCash: currentCashBalance,
-          runningBank: currentBankBalance,
-        });
+        const category = transaction.category || transaction.description?.split(' ')[0] || 'Other';
+        categoryData.income[category] = (categoryData.income[category] || 0) + amount;
+      } else {
+        totalExpense += amount;
+        if (isCash) cashBalance -= amount;
+        if (isBank) bankBalance -= amount;
+
+        const category = transaction.category || transaction.description?.split(' ')[0] || 'Other';
+        categoryData.expense[category] = (categoryData.expense[category] || 0) + amount;
+      }
+
+      rows.push({
+        id: transaction._id,
+        type: transaction.type,
+        date: transaction.date,
+        particulars: transaction.description,
+        category: transaction.category,
+        debitCash: transaction.type === 'income' && isCash ? amount : 0,
+        debitBank: transaction.type === 'income' && isBank ? amount : 0,
+        creditCash: transaction.type === 'expense' && isCash ? amount : 0,
+        creditBank: transaction.type === 'expense' && isBank ? amount : 0,
+        balanceCash: cashBalance,
+        balanceBank: bankBalance,
+        isBalanceRecord: false
+      });
+
+      const dateKey = dayjs(transaction.date).format('YYYY-MM-DD');
+      if (!cashFlowData.find(d => d.date === dateKey)) {
+        cashFlowData.push({ date: dateKey, income: 0, expense: 0, net: 0 });
+      }
+      const dayData = cashFlowData.find(d => d.date === dateKey);
+      if (transaction.type === 'income') {
+        dayData.income += amount;
+        dayData.net += amount;
+      } else {
+        dayData.expense += amount;
+        dayData.net -= amount;
       }
     });
 
-    // Add a closing balance row
     rows.push({
       id: 'closing-balance',
-      type: 'total',
-      date: new Date(), // Use current date for closing balance row
-      particularsDebit: 'Closing Balance',
-      particularsCredit: '',
-      debitCash: null,
-      debitBank: null,
-      creditCash: null,
-      creditBank: null,
-      runningCash: currentCashBalance,
-      runningBank: currentBankBalance,
+      type: 'balance',
+      date: new Date(),
+      particulars: 'Closing Balance',
+      debitCash: 0,
+      debitBank: 0,
+      creditCash: 0,
+      creditBank: 0,
+      balanceCash: cashBalance,
+      balanceBank: bankBalance,
+      isBalanceRecord: true
     });
+
+   
+
+// ... in useMemo for cashbookData
+    const incomeCategories = Object.entries(categoryData.income).map(([name, value], index) => ({
+      name,
+      value,
+      color: chartColors[index % chartColors.length],
+      legendFontColor: theme.COLORS.textDark,
+      legendFontSize: 12
+    }));
+
+    const expenseCategories = Object.entries(categoryData.expense).map(([name, value], index) => ({
+      name,
+      value,
+      color: chartColors[index % chartColors.length],
+      legendFontColor: theme.COLORS.textDark,
+      legendFontSize: 12
+    }));
 
     return {
       rows,
-      lastBalancedDate: lastBalancedDate,
-      finalBalance: { cash: currentCashBalance, bank: currentBankBalance },
+      financialSummary: {
+        totalIncome,
+        totalExpense,
+        netCashFlow: totalIncome - totalExpense,
+        cashBalance,
+        bankBalance,
+        categoryData,
+        daysInPeriod: dayjs(filterEndDate).diff(dayjs(filterStartDate), 'day') + 1,
+        avgDailyIncome: totalIncome / (dayjs(filterEndDate).diff(dayjs(filterStartDate), 'day') + 1),
+        avgDailyExpense: totalExpense / (dayjs(filterEndDate).diff(dayjs(filterStartDate), 'day') + 1)
+      },
+      chartData: cashFlowData.sort((a, b) => dayjs(a.date).diff(dayjs(b.date))),
+      categoryChartData: {
+        income: incomeCategories,
+        expense: expenseCategories
+      }
     };
-  };
+  }, [transactions, balanceRecords, filterStartDate, filterEndDate]);
 
-  // Filter data based on date range
-  const filteredData = useMemo(() => {
-    if (!filterStartDate && !filterEndDate) return cashbookData;
-    
-    return cashbookData.filter(row => {
-      if (!row.date) return false;
-      
-      const rowDate = new Date(row.date);
-      const start = filterStartDate ? new Date(filterStartDate) : null;
-      const end = filterEndDate ? new Date(filterEndDate) : null;
-      
-      return (
-        (!start || rowDate >= start) &&
-        (!end || rowDate <= end)
-      );
-    });
-  }, [cashbookData, filterStartDate, filterEndDate]);
-
-  // Handle date selection
   const handleDateSelect = (date) => {
     const selectedDate = date.date;
     if (currentPicker === 'start') {
@@ -187,33 +261,289 @@ const CashBookScreen = () => {
     setIsDatePickerVisible(false);
   };
 
-  // Balance cashbook
+  
   const handleBalanceCashBook = useCallback(async () => {
-    setLoading(true);
     try {
-      // Your existing balance logic
-      await fetchCashBookData();
-      showNotification('Cashbook balanced successfully', 'success');
+      await getApi().post('/balances/setLastBalancedDate', {
+        cashBalance: financialSummary.cashBalance,
+        bankBalance: financialSummary.bankBalance,
+        
+        date: new Date()
+
+      });
+      showNotification('Cashbook balanced successfully!', 'success');
+      fetchCashBookData();
     } catch (error) {
-      showNotification('Failed to balance cashbook', 'error');
-    } finally {
-      setLoading(false);
+      showNotification(error.response?.data?.msg || 'Failed to balance cashbook.', 'error');
     }
-  }, [fetchCashBookData, showNotification]);
+  }, [financialSummary, user, showNotification, fetchCashBookData]);
 
-  // Effects
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', fetchCashBookData);
-    return unsubscribe;
-  }, [navigation, fetchCashBookData]);
+  const handleExport = async () => {
+    try {
+      const csvContent = 'Date,Particulars,Debit Cash,Debit Bank,Credit Cash,Credit Bank,Balance Cash,Balance Bank\n' + 
+        cashbookData.map(row => 
+          `${dayjs(row.date).format('YYYY-MM-DD')},"${row.particulars}",${row.debitCash},${row.debitBank},${row.creditCash},${row.creditBank},${row.balanceCash},${row.balanceBank}`
+        ).join('\n');
+      
+      const path = `${RNFS.CachesDirectoryPath}/cashbook_${dayjs().format('YYYYMMDD_HHmmss')}.csv`;
+      await RNFS.writeFile(path, csvContent, 'utf8');
+      
+      const options = {
+        type: 'text/csv',
+        url: path, // Pass the raw path
+        title: 'Share Cashbook CSV',
+        subject: 'Cashbook Data',
+      };
 
-  // Render item for FlatList
-  const renderItem = ({ item, index }) => (
-    <CashBookRow 
-      item={item} 
-      index={index} 
-      isLast={index === filteredData.length - 1}
-    />
+      await Share.open(options);
+      showNotification('Data exported successfully!', 'success');
+    } catch (error) {
+      console.error('Failed to export data:', error);
+      showNotification('Failed to export data.', 'error');
+    }
+  };
+
+  const renderCashBookRow = ({ item }) => (
+    <View style={[
+      styles.row,
+      item.type === 'balance' && styles.balanceRow,
+      item.type === 'income' && styles.incomeRow,
+      item.type === 'expense' && styles.expenseRow
+    ]}>
+      <Text style={[styles.dateCell, item.type === 'balance' && styles.balanceRowText]}>{dayjs(item.date).format('DD MMM')}</Text>
+      <Text style={[styles.particularsCell, item.type === 'balance' && styles.balanceRowText]} numberOfLines={1}>{item.particulars}</Text>
+      <View style={styles.amountColumn}>
+        <Text style={[styles.amountText, item.debitCash > 0 && styles.debitText]}>
+          {item.debitCash > 0 ? `Cash ₦${item.debitCash.toFixed(2)}` : ''}
+        </Text>
+        <Text style={[styles.amountText, item.debitBank > 0 && styles.debitText]}>
+          {item.debitBank > 0 ? `Bank ₦${item.debitBank.toFixed(2)}` : ''}
+        </Text>
+      </View>
+      <View style={styles.amountColumn}>
+        <Text style={[styles.amountText, item.creditCash > 0 && styles.creditText]}>
+          {item.creditCash > 0 ? `Cash ₦${item.creditCash.toFixed(2)}` : ''}
+        </Text>
+        <Text style={[styles.amountText, item.creditBank > 0 && styles.creditText]}>
+          {item.creditBank > 0 ? `Bank ₦${item.creditBank.toFixed(2)}` : ''}
+        </Text>
+      </View>
+      <View style={styles.amountColumn}>
+        <Text style={[styles.amountText, styles.balanceText, item.type === 'balance' && styles.balanceRowText]}> Cash {` ₦${item.balanceCash.toFixed(2)}`}</Text>
+        <Text style={[styles.amountText, styles.balanceText, item.type === 'balance' && styles.balanceRowText]}>Bank {` ₦${item.balanceBank.toFixed(2)}`}</Text>
+      </View>
+    </View>
+  );
+
+  const renderCashBook = () => (
+    <>
+      <View style={styles.listHeader}>
+        <Text style={[styles.headerCell, styles.dateCell]}>Date</Text>
+        <Text style={[styles.headerCell, styles.particularsCell]}>Particulars</Text>
+        <Text style={[styles.headerCell, styles.amountCell]}>Debit</Text>
+        <Text style={[styles.headerCell, styles.amountCell]}>Credit</Text>
+        <Text style={[styles.headerCell, styles.amountCell]}>Balance</Text>
+      </View>
+
+      <FlatList
+        data={cashbookData}
+        renderItem={renderCashBookRow}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      />
+    </>
+  );
+
+  const renderAnalytics = () => (
+    <ScrollView 
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      {/* Financial Summary Cards */}
+      <View style={styles.summaryContainer}>
+        <Text style={styles.sectionTitle}>Financial Summary</Text>
+        <View style={styles.summaryGrid}>
+          <View style={[styles.summaryCard, styles.incomeCard]}>
+            <Ionicons name="trending-up" size={24} color={theme.COLORS.success} />
+            <Text style={styles.summaryLabel}>Total Income</Text>
+            <Text style={[styles.summaryValue, styles.incomeText]}>₦{financialSummary.totalIncome.toFixed(2)}</Text>
+          </View>
+          <View style={[styles.summaryCard, styles.expenseCard]}>
+            <Ionicons name="trending-down" size={24} color={theme.COLORS.danger} />
+            <Text style={styles.summaryLabel}>Total Expense</Text>
+            <Text style={[styles.summaryValue, styles.expenseText]}>₦{financialSummary.totalExpense.toFixed(2)}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.summaryGrid}>
+          <View style={[styles.summaryCard, styles.netCard]}>
+            <Ionicons 
+              name={financialSummary.netCashFlow >= 0 ? "arrow-up" : "arrow-down"} 
+              size={24} 
+              color={financialSummary.netCashFlow >= 0 ? theme.COLORS.success : theme.COLORS.danger} 
+            />
+            <Text style={styles.summaryLabel}>Net Cash Flow</Text>
+            <Text style={[styles.summaryValue, 
+              financialSummary.netCashFlow >= 0 ? styles.incomeText : styles.expenseText
+            ]}>
+              ₦{Math.abs(financialSummary.netCashFlow).toFixed(2)}
+            </Text>
+          </View>
+          <View style={[styles.summaryCard, styles.balanceCard]}>
+            <Ionicons name="wallet" size={24} color={theme.COLORS.primary} />
+            <Text style={styles.summaryLabel}>Total Balance</Text>
+            <Text style={[styles.summaryValue, styles.balanceText]}>
+              ₦{(financialSummary.cashBalance + financialSummary.bankBalance).toFixed(2)}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Daily Averages */}
+      <View style={styles.averagesContainer}>
+        <Text style={styles.sectionTitle}>Daily Averages</Text>
+        <View style={styles.averagesGrid}>
+          <View style={styles.averageItem}>
+            <Text style={styles.averageLabel}>Income</Text>
+            <Text style={[styles.averageValue, styles.incomeText]}>
+              ₦{financialSummary.avgDailyIncome.toFixed(2)}
+            </Text>
+          </View>
+          <View style={styles.averageItem}>
+            <Text style={styles.averageLabel}>Expense</Text>
+            <Text style={[styles.averageValue, styles.expenseText]}>
+              ₦{financialSummary.avgDailyExpense.toFixed(2)}
+            </Text>
+          </View>
+          <View style={styles.averageItem}>
+            <Text style={styles.averageLabel}>Net</Text>
+            <Text style={[styles.averageValue, 
+              financialSummary.netCashFlow >= 0 ? styles.incomeText : styles.expenseText
+            ]}>
+              ₦{(financialSummary.avgDailyIncome - financialSummary.avgDailyExpense).toFixed(2)}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Cash Flow Chart */}
+      {chartData.length > 0 && (
+        <View style={styles.chartContainer}>
+          <Text style={styles.sectionTitle}>Cash Flow Trend</Text>
+          <LineChart
+            data={{
+              labels: chartData.slice(-7).map(d => dayjs(d.date).format('DD MMM')),
+              datasets: [
+                {
+                  data: chartData.slice(-7).map(d => d.income),
+                  color: (opacity = 1) => theme.COLORS.success,
+                  strokeWidth: 2
+                },
+                {
+                  data: chartData.slice(-7).map(d => d.expense),
+                  color: (opacity = 1) => theme.COLORS.danger,
+                  strokeWidth: 2
+                },
+                {
+                  data: chartData.slice(-7).map(d => d.net),
+                  color: (opacity = 1) => theme.COLORS.primary,
+                  strokeWidth: 3
+                }
+              ]
+            }}
+            width={width - 32}
+            height={220}
+            chartConfig={{
+              backgroundColor: theme.COLORS.light,
+              backgroundGradientFrom: theme.COLORS.light,
+              backgroundGradientTo: theme.COLORS.light,
+              decimalPlaces: 2,
+              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              style: { borderRadius: 16 },
+              propsForDots: {
+                r: "4",
+                strokeWidth: "2",
+              }
+            }}
+            bezier
+            style={styles.chart}
+          />
+        </View>
+      )}
+
+      {/* Category Analysis */}
+      <View style={styles.categoryContainer}>
+        <Text style={styles.sectionTitle}>Income Categories</Text>
+        {categoryChartData.income.length > 0 ? (
+          <>
+            <PieChart
+              data={categoryChartData.income}
+              width={width - 32}
+              height={160}
+              chartConfig={{
+                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              }}
+              accessor="value"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
+            />
+            {Object.entries(financialSummary.categoryData.income).map(([category, amount]) => (
+              <View key={category} style={styles.categoryItem}>
+                <Text style={styles.categoryName}>{category}</Text>
+                <View style={styles.categoryBar}>
+                  <Progress.Bar 
+                    progress={amount / financialSummary.totalIncome} 
+                    width={width - 120}
+                    color={theme.COLORS.success}
+                  />
+                </View>
+                <Text style={styles.categoryAmount}>₦{amount.toFixed(2)}</Text>
+              </View>
+            ))}
+          </>
+        ) : (
+          <Text style={styles.noDataText}>No income data available</Text>
+        )}
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Expense Categories</Text>
+        {categoryChartData.expense.length > 0 ? (
+          <>
+            <PieChart
+              data={categoryChartData.expense}
+              width={width - 32}
+              height={160}
+              chartConfig={{
+                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              }}
+              accessor="value"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
+            />
+            {Object.entries(financialSummary.categoryData.expense).map(([category, amount]) => (
+              <View key={category} style={styles.categoryItem}>
+                <Text style={styles.categoryName}>{category}</Text>
+                <View style={styles.categoryBar}>
+                  <Progress.Bar 
+                    progress={amount / financialSummary.totalExpense} 
+                    width={width - 120}
+                    color={theme.COLORS.danger}
+                  />
+                </View>
+                <Text style={styles.categoryAmount}>₦{amount.toFixed(2)}</Text>
+              </View>
+            ))}
+          </>
+        ) : (
+          <Text style={styles.noDataText}>No expense data available</Text>
+        )}
+      </View>
+    </ScrollView>
   );
 
   if (loading) {
@@ -221,7 +551,7 @@ const CashBookScreen = () => {
       <BackgroundContainer>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.COLORS.primary} />
-          <Text style={styles.loadingText}>Loading cashbook...</Text>
+          <Text style={styles.loadingText}>Loading Cash Book Data...</Text>
         </View>
       </BackgroundContainer>
     );
@@ -229,104 +559,77 @@ const CashBookScreen = () => {
 
   return (
     <BackgroundContainer>
-      {/* Header Section */}
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Cashbook</Text>
+        <Text style={styles.title}>Double Column Cash Book</Text>
         
-        <View style={styles.balanceInfo}>
-          <Text style={styles.balanceLabel}>
-            Last Balanced: {lastBalancedDate ? dayjs(lastBalancedDate).format('DD MMM YYYY') : 'Never'}
-          </Text>
-          {finalClosingBalance && (
-            <Text style={styles.balanceAmount}>
-              Cash: {finalClosingBalance.cash.toFixed(2)} | Bank: {finalClosingBalance.bank.toFixed(2)}
-            </Text>
-          )}
+        {/* Date Filter */}
+        <View style={styles.filterContainer}>
+          <TouchableOpacity 
+            style={styles.dateButton}
+            onPress={() => { setCurrentPicker('start'); setIsDatePickerVisible(true); }}
+          >
+            <Ionicons name="calendar" size={16} color="white" />
+            <Text style={styles.dateText}>{dayjs(filterStartDate).format('DD MMM YY')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.dateSeparator}>to</Text>
+          <TouchableOpacity 
+            style={styles.dateButton}
+            onPress={() => { setCurrentPicker('end'); setIsDatePickerVisible(true); }}
+          >
+            <Ionicons name="calendar" size={16} color="white" />
+            <Text style={styles.dateText}>{dayjs(filterEndDate).format('DD MMM YY')}</Text>
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity 
-          style={styles.balanceButton}
-          onPress={handleBalanceCashBook}
-        >
-          <Text style={styles.balanceButtonText}>Balance Now</Text>
-        </TouchableOpacity>
+
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          {['cashbook', 'analytics'].map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tab, activeTab === tab && styles.activeTab]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Ionicons 
+                name={tab === 'cashbook' ? 'book' : 'analytics'} 
+                size={16} 
+                color={activeTab === tab ? theme.COLORS.primary : 'white'} 
+              />
+              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+                {tab === 'cashbook' ? 'Cash Book' : 'Analytics'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Actions */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleBalanceCashBook}>
+            <Ionicons name="checkmark-circle" size={20} color="white" />
+            <Text style={styles.actionButtonText}>Balance</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={handleExport}>
+            <Ionicons name="download" size={20} color="white" />
+            <Text style={styles.actionButtonText}>Export</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Date Filter Controls */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={styles.dateInput}
-          onPress={() => {
-            setCurrentPicker('start');
-            setIsDatePickerVisible(true);
-          }}
-        >
-          <Text style={styles.dateInputText}>
-            {filterStartDate ? dayjs(filterStartDate).format('DD MMM YY') : 'Start Date'}
-          </Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.dateSeparator}>to</Text>
-        
-        <TouchableOpacity
-          style={styles.dateInput}
-          onPress={() => {
-            setCurrentPicker('end');
-            setIsDatePickerVisible(true);
-          }}
-        >
-          <Text style={styles.dateInputText}>
-            {filterEndDate ? dayjs(filterEndDate).format('DD MMM YY') : 'End Date'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Cashbook List */}
-      <View style={styles.listContainer}>
-        <View style={styles.listHeader}>
-          <Text style={[styles.headerCell, styles.dateHeader]}>Date</Text>
-          <Text style={[styles.headerCell, styles.debitHeader]}>Debit</Text>
-          <Text style={[styles.headerCell, styles.creditHeader]}>Credit</Text>
-        </View>
-        
-        <FlatList
-          data={filteredData}
-          renderItem={renderItem}
-          keyExtractor={(item, index) => `${item.type}-${index}`}
-          initialNumToRender={20}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No transactions found</Text>
-            </View>
-          }
-        />
+      {/* Content */}
+      <View style={styles.content}>
+        {activeTab === 'cashbook' ? renderCashBook() : renderAnalytics()}
       </View>
 
       {/* Date Picker Modal */}
-      <Modal
-        visible={isDatePickerVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsDatePickerVisible(false)}
-      >
-        <View style={styles.modalContainer}>
+      <Modal visible={isDatePickerVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <DateTimePicker
               mode="single"
-              date={currentPicker === 'start' ? 
-                (filterStartDate ? dayjs(filterStartDate) : dayjs()) : 
-                (filterEndDate ? dayjs(filterEndDate) : dayjs())}
+              date={currentPicker === 'start' ? filterStartDate : filterEndDate}
               onChange={handleDateSelect}
-              selectedItemColor={theme.COLORS.primary}
-              headerTextStyle={styles.pickerHeader}
-              // Add other DateTimePicker props as needed
             />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setIsDatePickerVisible(false)}
-            >
+            <TouchableOpacity style={styles.closeButton} onPress={() => setIsDatePickerVisible(false)}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -336,114 +639,203 @@ const CashBookScreen = () => {
   );
 };
 
-// CashBookRow Component
-const CashBookRow = React.memo(({ item, index, isLast }) => {
-  const rowStyles = [
-    styles.row,
-    index % 2 === 0 ? styles.evenRow : styles.oddRow,
-    item.type === 'balance' && styles.balanceRow,
-    item.type === 'total' && styles.totalRow,
-    isLast && styles.lastRow,
-  ];
-
-  return (
-    <View style={rowStyles}>
-      <Text style={styles.dateCell}>
-        {item.date ? dayjs(item.date).format('DD MMM') : ''}
-      </Text>
-      
-      {/* Debit Column */}
-      <View style={styles.debitColumn}>
-        <Text style={styles.particulars} numberOfLines={1}>
-          {item.particularsDebit}
-        </Text>
-        <View style={styles.amountContainer}>
-          <Text style={styles.amount}>
-            {item.debitCash ? item.debitCash.toFixed(2) : ''}
-          </Text>
-          <Text style={styles.amount}>
-            {item.debitBank ? item.debitBank.toFixed(2) : ''}
-          </Text>
-        </View>
-      </View>
-      
-      {/* Credit Column */}
-      <View style={styles.creditColumn}>
-        <Text style={styles.particulars} numberOfLines={1}>
-          {item.particularsCredit}
-        </Text>
-        <View style={styles.amountContainer}>
-          <Text style={styles.amount}>
-            {item.creditCash ? item.creditCash.toFixed(2) : ''}
-          </Text>
-          <Text style={styles.amount}>
-            {item.creditBank ? item.creditBank.toFixed(2) : ''}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-});
-
-// Styles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.COLORS.backgroundApp,
-  },
   header: {
-    padding: 16,
     backgroundColor: theme.COLORS.primary,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    padding: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
-    marginBottom: 8,
-  },
-  balanceInfo: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 8,
-    padding: 12,
     marginBottom: 12,
-  },
-  balanceLabel: {
-    color: 'white',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  balanceAmount: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  balanceButton: {
-    backgroundColor: theme.COLORS.success,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  balanceButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
   filterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: theme.COLORS.backgroundCard,
+    justifyContent: 'center',
+    marginBottom: 12,
   },
-  dateInput: {
-    flex: 1,
-    backgroundColor: 'white',
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: 8,
     borderRadius: 8,
+    minWidth: 100,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  dateText: {
+    color: 'white',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  dateSeparator: {
+    color: 'white',
+    marginHorizontal: 8,
+    fontWeight: '500',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 12,
+  },
+  tab: {
+    flex: 1,
+    padding: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  activeTab: {
+    backgroundColor: 'white',
+  },
+  tabText: {
+    color: 'white',
+    fontWeight: '500',
+    fontSize: 12,
+  },
+  activeTabText: {
+    color: theme.COLORS.primary,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.COLORS.secondary,
+    padding: 10,
+    borderRadius: 8,
+    gap: 4,
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  actionButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    backgroundColor: theme.COLORS.white,
     padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: theme.COLORS.primary,
+  },
+  headerCell: {
+    fontWeight: 'bold',
+    color: theme.COLORS.primary,
+    fontSize: 12,
+  },
+  dateCell: { 
+    width: 60,
+    fontSize: 12,
+    color: theme.COLORS.textDark,
+  },
+  particularsCell: { 
+    flex: 2, 
+    marginLeft: 8,
+    fontSize: 12,
+    color: theme.COLORS.textDark,
+  },
+  amountCell: { 
+    flex: 1, 
+    textAlign: 'right',
+  },
+  row: {
+    flexDirection: 'row',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.COLORS.border,
+    alignItems: 'center',
+    minHeight: 50,
+    backgroundColor: theme.COLORS.backgroundCard,
+    marginBottom: 4,
+    borderRadius: 8,
+  },
+  incomeRow: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.COLORS.success,
+    backgroundColor: 'white',
+  },
+  expenseRow: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.COLORS.danger,
+    backgroundColor: 'white',
+  },
+  balanceRow: {
+    backgroundColor: theme.COLORS.primary,
+    fontWeight: 'bold',
+  },
+  balanceRowText: {
+    color: theme.COLORS.textLight,
+  },
+  amountColumn: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  amountText: {
+    fontSize: 12,
+    color: theme.COLORS.textDark,
+  },
+  debitText: {
+    color: theme.COLORS.success,
+    fontWeight: '500',
+  },
+  creditText: {
+    color: theme.COLORS.danger,
+    fontWeight: '500',
+  },
+  balanceText: {
+    fontWeight: 'bold',
+    color: theme.COLORS.primary,
+  },
+  summaryContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.COLORS.primary,
+    marginBottom: 12,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  summaryCard: {
+    flex: 1,
+    minWidth: (width - 48) / 2,
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -452,113 +844,120 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
     }),
   },
-  dateInputText: {
-    textAlign: 'center',
-    color: theme.COLORS.textDark,
+  incomeCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.COLORS.success,
   },
-  dateSeparator: {
-    marginHorizontal: 8,
-    color: theme.COLORS.textMedium,
+  expenseCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.COLORS.danger,
   },
-  listContainer: {
-    flex: 1,
-    backgroundColor: theme.COLORS.backgroundLight,
+  netCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.COLORS.warning,
   },
-  listHeader: {
-    flexDirection: 'row',
-    backgroundColor: theme.COLORS.backgroundCard,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.COLORS.border,
+  balanceCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.COLORS.primary,
   },
-  headerCell: {
-    fontWeight: 'bold',
-    color: theme.COLORS.textDark,
-  },
-  dateHeader: {
-    width: 70,
-    paddingLeft: 8,
-  },
-  debitHeader: {
-    flex: 1,
-    textAlign: 'left',
-    paddingLeft: 8,
-  },
-  creditHeader: {
-    flex: 1,
-    textAlign: 'left',
-    paddingLeft: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.COLORS.borderLight,
-  },
-  evenRow: {
-    backgroundColor: theme.COLORS.backgroundLight,
-  },
-  oddRow: {
-    backgroundColor: theme.COLORS.backgroundCard,
-  },
-  balanceRow: {
-    backgroundColor: theme.COLORS.backgroundAccent,
-  },
-  totalRow: {
-    backgroundColor: '#e8f5e9',
-    borderTopWidth: 1,
-    borderTopColor: theme.COLORS.primary,
-  },
-  lastRow: {
-    borderBottomWidth: 0,
-  },
-  dateCell: {
-    width: 70,
-    paddingLeft: 8,
-    color: theme.COLORS.textMedium,
+  summaryLabel: {
     fontSize: 12,
+    color: theme.COLORS.textMedium,
+    marginBottom: 4,
+    marginTop: 8,
   },
-  debitColumn: {
-    flex: 1,
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  incomeText: {
+    color: theme.COLORS.success,
+  },
+  expenseText: {
+    color: theme.COLORS.danger,
+  },
+  averagesContainer: {
+    marginBottom: 20,
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+  },
+  averagesGrid: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  creditColumn: {
+  averageItem: {
+    alignItems: 'center',
     flex: 1,
-    flexDirection: 'row',
   },
-  particulars: {
-    flex: 1,
-    paddingLeft: 8,
+  averageLabel: {
+    fontSize: 12,
+    color: theme.COLORS.textMedium,
+    marginBottom: 4,
+  },
+  averageValue: {
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  chartContainer: {
+    marginBottom: 20,
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+  },
+  chart: {
+    borderRadius: 12,
+    marginVertical: 8,
+  },
+  categoryContainer: {
+    marginBottom: 20,
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    padding: 8,
+  },
+  categoryName: {
+    width: 60,
+    fontSize: 12,
     color: theme.COLORS.textDark,
+    fontWeight: '500',
   },
-  amountContainer: {
-    width: 80,
-  },
-  amount: {
-    textAlign: 'right',
-    paddingRight: 8,
-    fontSize: 13,
-    color: theme.COLORS.textDark,
-  },
-  modalContainer: {
+  categoryBar: {
     flex: 1,
-    justifyContent: 'center',
+    marginHorizontal: 8,
+  },
+  categoryAmount: {
+    width: 70,
+    textAlign: 'right',
+    fontSize: 12,
+    color: theme.COLORS.textDark,
+    fontWeight: '500',
+  },
+  noDataText: {
+    textAlign: 'center',
+    color: theme.COLORS.textMedium,
+    fontStyle: 'italic',
+    marginVertical: 16,
+  },
+  modalOverlay: {
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
   },
   modalContent: {
     backgroundColor: 'white',
-    marginHorizontal: 20,
+    margin: 20,
     borderRadius: 12,
     padding: 16,
-  },
-  pickerHeader: {
-    color: theme.COLORS.primary,
-    fontWeight: 'bold',
   },
   closeButton: {
     marginTop: 16,
@@ -575,17 +974,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 16,
   },
   loadingText: {
-    marginTop: 16,
-    color: theme.COLORS.textMedium,
-  },
-  emptyContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: theme.COLORS.textMedium,
+    color: theme.COLORS.primary,
+    fontSize: 16,
   },
 });
 

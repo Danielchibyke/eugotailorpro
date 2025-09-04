@@ -2,20 +2,27 @@ import cloudinary from '../config/cloudinary.js';
 import streamifier from 'streamifier';
 
 const uploadImage = async (req, res) => {
+  console.log('Received upload request.');
+  console.log('req.file:', req.file);
+
   if (!req.file) {
-    return res.status(400).json({ message: 'No image file provided' });
+    console.error('No image file provided in request.');
+    return res.status(400).json({ message: 'No image file provided.' });
   }
 
   // Validate file type and size
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
   if (!allowedMimeTypes.includes(req.file.mimetype)) {
-    return res.status(400).json({ message: 'Invalid file type' });
+    console.error(`Invalid file type: ${req.file.mimetype}`);
+    return res.status(400).json({ message: `Invalid file type: ${req.file.mimetype}. Only JPEG, PNG, WEBP are allowed.` });
   }
-  if (req.file.size > 70 * 1024 * 1024) {
-    return res.status(400).json({ message: 'File too large (max 10MB)' });
+  if (req.file.size > 50 * 1024 * 1024) {
+    console.error(`File too large: ${req.file.size} bytes.`);
+    return res.status(400).json({ message: `File too large. Max size is 50MB. Received ${req.file.size} bytes.` });
   }
 
   try {
+    console.log('Attempting Cloudinary upload...');
     // Stream-based upload (better for large files)
     const uploadStream = cloudinary.uploader.upload_stream(
       {

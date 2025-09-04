@@ -7,7 +7,7 @@ import Booking from '../models/Booking.js'; // Import Booking model
 // @route   POST /api/clients
 // @access  Private (Admin/Staff)
 const createClient = asyncHandler(async (req, res) => {
-    const { name, email, phone, address,measurement } = req.body;
+    const { name, email, phone, address, measurements } = req.body;
 
     // Basic validation
     if (!name || !phone) {
@@ -34,7 +34,7 @@ const createClient = asyncHandler(async (req, res) => {
         email,
         phone,
         address,
-        measurement,
+        measurements,
         createdBy: req.user._id, // User who created the client from middleware
     });
 
@@ -45,31 +45,20 @@ const createClient = asyncHandler(async (req, res) => {
 // @route   GET /api/clients
 // @access  Private (Admin/Staff)
 const getClients = asyncHandler(async (req, res) => {
-    const clients = await Client.aggregate([
-        {
-            $lookup: {
-                from: 'bookings', // The name of the bookings collection
-                localField: '_id',
-                foreignField: 'client',
-                as: 'bookings',
-            },
-        },
-        {
-            $addFields: {
-                totalBookings: { $size: '$bookings' },
-            },
-        },
-        {
-            $project: {
-                bookings: 0, // Exclude the actual bookings array if not needed on the frontend
-            },
-        },
-    ]);
+    const clients = await Client.find({}).populate('createdBy', 'name email').lean(); // Use lean() for performance
 
-    // If you still need to populate 'createdBy', you'll need to do it after aggregation
-    // or adjust the aggregation pipeline to include it.
-    // For now, we'll just return the clients with totalBookings.
-    res.json(clients);
+    // For each client, get the count of their bookings
+    const clientsWithBookingCounts = await Promise.all(
+        clients.map(async (client) => {
+            const bookingCount = await Booking.countDocuments({ client: client._id });
+            return {
+                ...client,
+                totalBookings: bookingCount,
+            };
+        })
+    );
+
+    res.json(clientsWithBookingCounts);
 });
 
 // @desc    Get client by ID
@@ -90,7 +79,7 @@ const getClientById = asyncHandler(async (req, res) => {
 // @route   PUT /api/clients/:id
 // @access  Private (Admin/Staff)
 const updateClient = asyncHandler(async (req, res) => {
-    const { name, email, phone, address, measurement } = req.body;
+    const { name, email, phone, address, measurements } = req.body;
 
     const client = await Client.findById(req.params.id);
 
@@ -100,9 +89,9 @@ const updateClient = asyncHandler(async (req, res) => {
         client.phone = phone || client.phone;
         client.address = address || client.address;
 
-        // If measurement data is provided, merge it with the existing data
-        if (measurement) {
-            Object.assign(client.measurement, measurement);
+        // If measurements data is provided, replace the existing array
+        if (measurements) {
+            client.measurements = measurements;
         }
 
         // Optionally, check for duplicate email/phone if they are being updated to existing ones
@@ -147,10 +136,34 @@ const deleteClient = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Update client measurements
+// @route   PUT /api/clients/:id/measurements
+// @access  Private (Admin/Staff)
+const updateClientMeasurements = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const measurements = req.body; 
+    const updatedClient = await Client.findOneAndUpdate(
+        { _id: id },
+        { $set: { measurements: measurements } }, // Use $set to update the subdocument
+        { new: true, runValidators: true } // Return the updated document and run schema validators
+    );
+
+    if (updatedClient) {
+        console.log('Measurements updated successfully for client:', updatedClient.name);
+        console.log('Saved client measurements:', updatedClient.measurements);
+        res.json(updatedClient);
+    } else {
+        console.log('Client not found for ID:', id);
+        res.status(404);
+        throw new Error('Client not found');
+    }
+});
+
 export {
     createClient,
     getClients,
     getClientById,
     updateClient,
     deleteClient,
+    updateClientMeasurements, // Export the new function
 };

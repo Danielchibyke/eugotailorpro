@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
@@ -16,25 +15,30 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
 
+import { useNetInfo } from '@react-native-community/netinfo';
 import BackgroundContainer from '../components/BackgroundContainer';
 import TransactionCard from '../components/TransactionCard';
-import ClientSearchModal from '../components/ClientSearchModal'; // Import the new modal
+import ClientSearchModal from '../components/ClientSearchModal';
 import { useNotification } from '../context/NotificationContext';
-import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { getApi } from '../utils/api';
 import theme from '../styles/theme';
 
 const FinancialsScreen = ({ navigation }) => {
+    const { user } = useAuth();
     const [transactions, setTransactions] = useState([]);
     const [clients, setClients] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const netInfo = useNetInfo();
+
+    const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [clientSearchModalVisible, setClientSearchModalVisible] = useState(false); // New state for search modal
+    const [clientSearchModalVisible, setClientSearchModalVisible] = useState(false);
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
     const [formData, setFormData] = useState({
         type: 'income',
         amount: '',
         description: '',
-        client: null, // Will store the client object now
+        client: null,
         paymentMethod: 'Cash',
         voucherNo: '',
         date: new Date(),
@@ -42,26 +46,35 @@ const FinancialsScreen = ({ navigation }) => {
 
     const { showNotification } = useNotification();
 
-    const fetchData = useCallback(async () => {
+    const fetchTransactions = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const [transactionsRes, clientsRes] = await Promise.all([
-                api.get('/transactions'),
-                api.get('/clients'),
-            ]);
-            setTransactions(transactionsRes.data.sort((a, b) => new Date(b.date) - new Date(a.date)));
-            setClients(clientsRes.data);
+            const { data } = await getApi().get('/transactions');
+            const sortedData = data.sort((a, b) => new Date(b.date) - new Date(a.date));
+            setTransactions(sortedData);
         } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to fetch data.', 'error');
+            console.error('Failed to fetch transactions from API:', err);
+            showNotification(err.response?.data?.msg || 'Failed to fetch transactions.', 'error');
         } finally {
             setLoading(false);
         }
     }, [showNotification]);
 
+    const fetchClients = useCallback(async () => {
+        try {
+            const { data } = await getApi().get('/clients');
+            setClients(data);
+        } catch (err) {
+            console.error('Failed to fetch clients:', err);
+        }
+    }, []);
+
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', fetchData);
+        fetchTransactions();
+        fetchClients();
+        const unsubscribe = navigation.addListener('focus', fetchTransactions);
         return unsubscribe;
-    }, [navigation, fetchData]);
+    }, [navigation, fetchTransactions, fetchClients]);
 
     const handleInputChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
@@ -74,7 +87,7 @@ const FinancialsScreen = ({ navigation }) => {
 
     const handleAddNewClient = () => {
         setClientSearchModalVisible(false);
-        navigation.navigate('AddClient'); // Navigate to your Add Client screen
+        navigation.navigate('AddClient');
     };
 
     const openAddTransactionModal = () => {
@@ -96,18 +109,25 @@ const FinancialsScreen = ({ navigation }) => {
             showNotification('Please fill in all required fields.', 'error');
             return;
         }
+
         try {
-            await api.post('/transactions', {
-                ...formData,
-                amount: parseFloat(formData.amount),
-                date: formData.date.toISOString().split('T')[0],
-                client: formData.client?._id, // Send only the client ID to the backend
-            });
+            const transactionData = {
+                type: formData.type,
+                amount: parseFloat(formData.amount) || 0,
+                description: formData.description,
+                client: formData.client?._id,
+                paymentMethod: formData.paymentMethod,
+                voucherNo: formData.voucherNo || null,
+                date: dayjs(formData.date).toISOString(),
+                recordedBy: user._id,
+            };
+
+            const response = await getApi().post('/transactions', transactionData);
+            setTransactions(prev => [response.data, ...prev]); // Prepend new transaction
             showNotification('Transaction added successfully!', 'success');
             setModalVisible(false);
-            fetchData(); // Refresh data
-        } catch (err) {
-            showNotification(err.response?.data?.msg || 'Failed to add transaction.', 'error');
+        } catch (error) {
+            showNotification(error.response?.data?.msg || 'Failed to add transaction.', 'error');
         }
     };
 
@@ -125,17 +145,18 @@ const FinancialsScreen = ({ navigation }) => {
             <View style={styles.summaryContainer}>
                 <View style={styles.summaryBox}>
                     <Text style={styles.summaryLabel}>Total Income</Text>
-                    <Text style={[styles.summaryValue, { color: theme.COLORS.success }]} numberOfLines={1} adjustsFontSizeToFit={true}>₦{totalIncome.toFixed(2)}</Text>
+                    <Text style={[styles.summaryValue, { color: theme.COLORS.textLight }]} numberOfLines={1} adjustsFontSizeToFit={true}>₦{totalIncome.toFixed(2)}</Text>
                 </View>
                 <View style={styles.summaryBox}>
                     <Text style={styles.summaryLabel}>Total Expense</Text>
-                    <Text style={[styles.summaryValue, { color: theme.COLORS.danger }]} numberOfLines={1} adjustsFontSizeToFit={true}>₦{totalExpense.toFixed(2)}</Text>
+                    <Text style={[styles.summaryValue, { color: theme.COLORS.textLight }]} numberOfLines={1} adjustsFontSizeToFit={true}>₦{totalExpense.toFixed(2)}</Text>
                 </View>
             </View>
             <TouchableOpacity style={styles.cashbookButton} onPress={() => navigation.navigate('CashBook')}>
                 <Ionicons name="book-outline" size={20} color={theme.COLORS.primary} />
                 <Text style={styles.cashbookButtonText}>View Full Cashbook</Text>
             </TouchableOpacity>
+            
         </View>
     );
 
@@ -152,7 +173,7 @@ const FinancialsScreen = ({ navigation }) => {
             <FlatList
                 data={transactions}
                 renderItem={({ item }) => <TransactionCard transaction={item} />}
-                keyExtractor={(item) => item._id}
+                keyExtractor={(item) => item._id} // Remove .toHexString()
                 ListHeaderComponent={renderHeader}
                 contentContainerStyle={styles.list}
                 ListEmptyComponent={
@@ -161,6 +182,8 @@ const FinancialsScreen = ({ navigation }) => {
                         <Text style={styles.emptyStateSubText}>Tap the '+' button to add one!</Text>
                     </View>
                 }
+                refreshing={loading}
+                onRefresh={fetchTransactions}
             />
 
             <TouchableOpacity style={styles.fab} onPress={openAddTransactionModal}>
@@ -273,7 +296,7 @@ const FinancialsScreen = ({ navigation }) => {
 
             <ClientSearchModal
                 visible={clientSearchModalVisible}
-                clients={clients}
+                clients={clients} 
                 onSelect={handleClientSelect}
                 onClose={() => setClientSearchModalVisible(false)}
                 onAddNew={handleAddNewClient}
@@ -281,6 +304,10 @@ const FinancialsScreen = ({ navigation }) => {
         </BackgroundContainer>
     );
 };
+
+
+
+
 
 const styles = StyleSheet.create({
     loadingContainer: {
@@ -290,7 +317,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.COLORS.backgroundApp,
     },
     list: {
-        paddingBottom: 80, // Space for FAB
+        paddingBottom: 80,
     },
     headerContainer: {
         backgroundColor: theme.COLORS.primary,
@@ -346,12 +373,14 @@ const styles = StyleSheet.create({
         borderRadius: theme.BORDERRADIUS.md,
         padding: theme.SPACING.sm,
         marginTop: theme.SPACING.md,
+        width: '100%',
     },
     cashbookButtonText: {
         color: theme.COLORS.primary,
         fontWeight: 'bold',
         marginLeft: theme.SPACING.sm,
     },
+    
     emptyStateContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -374,25 +403,21 @@ const styles = StyleSheet.create({
         right: 30,
         width: 60,
         height: 60,
-        borderRadius: 30,
+        borderRadius: theme.BORDERRADIUS.xxxl,
         backgroundColor: theme.COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 8,
+        ...theme.SHADOWS.lg,
     },
     modalOverlay: {
         flex: 1,
         justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: theme.COLORS.overlayBackground,
     },
     modalView: {
         backgroundColor: theme.COLORS.backgroundApp,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderTopLeftRadius: theme.BORDERRADIUS.xxl,
+        borderTopRightRadius: theme.BORDERRADIUS.xxl,
         padding: theme.SPACING.lg,
         maxHeight: '90%',
     },
@@ -505,7 +530,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: theme.COLORS.overlayBackground,
     },
     datePickerModalView: {
         backgroundColor: theme.COLORS.backgroundCard,
