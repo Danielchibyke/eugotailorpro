@@ -15,14 +15,13 @@ const __dirname = path.dirname(__filename);
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
     try {
-        const serviceAccountPath = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '../config/firebase-service-account.json');
-        const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+        const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
+
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
+            credential: admin.credential.cert(serviceAccount),
         });
     } catch (error) {
         console.error('Failed to initialize Firebase Admin SDK:', error);
-        // Exit the process or handle the error appropriately
         process.exit(1);
     }
 }
