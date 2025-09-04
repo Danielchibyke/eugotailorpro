@@ -13,7 +13,7 @@ export const setApiLogoutCallback = (callback) => {
 // Function to get the configured API instance
 const getApi = () => {
     const api = axios.create({
-        baseURL: `http://172.20.10.2:5000/api`,
+        baseURL: `https://eugotailorpro.onrender.com/api`,
         timeout: 800000, // Set a timeout for requests
     });
 
