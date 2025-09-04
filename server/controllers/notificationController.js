@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
     try {
-        const serviceAccountPath = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+        const serviceAccountPath = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '../config/firebase-service-account.json');
         const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
