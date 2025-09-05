@@ -1,6 +1,71 @@
- ERROR  Warning: Error: A navigator can only contain 'Screen', 'Group' or 'React.Fragment' as its direct children (found ' '). To render this component in the navigator, pass it in the 'component' prop to 'Screen'.
-
-This error is located at:
-
-Call Stack
-  MainStack (<anonymous>)
+09-03 11:22:48.817 12218 12218 W [RNScreens]: disableBackButtonMenu prop is not available on Android
+09-03 11:22:48.817 12218 12218 W [RNScreens]: backTitleVisible prop is not available on Android
+09-03 11:22:48.817 12218 12218 W [RNScreens]: largeTitleFontFamily prop is not available on Android
+09-03 11:22:48.817 12218 12218 W [RNScreens]: backTitleFontFamily prop is not available on Android
+09-03 11:22:48.817 12218 12218 W [RNScreens]: largeTitleFontWeight prop is not available on Android
+09-03 11:22:48.817 12218 12218 W [RNScreens]: largeTitleHideShadow prop is not available on Android
+09-03 11:22:49.036 12218 24142 I ReactNativeJS: 'NotificationHandler useEffect: user status', 'defined', 'loading:', false
+09-03 11:22:49.092 12218 24142 W ReactNativeJS: 'This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `requestPermission`. Please use `requestPermission()` instead.', { [Component Stack] name: 'Component Stack' }
+09-03 11:22:49.182 12218 24142 W ReactNativeJS: 'This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `onMessage`. Please use `onMessage()` instead.', { [Component Stack] name: 'Component Stack' }
+09-03 11:22:49.238 12218 24142 W ReactNativeJS: 'This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `onNotificationOpenedApp`. Please use `onNotificationOpenedApp()` instead.', { [Component Stack] name: 'Component Stack' }
+09-03 11:22:49.351 12218 24142 W ReactNativeJS: 'This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `getInitialNotification`. Please use `getInitialNotification()` instead.', { [Component Stack] name: 'Component Stack' }
+09-03 11:22:49.356 12218 24142 I ReactNativeJS: Network is online. Processing offline queue...
+09-03 11:22:49.367 12218 24142 W ReactNativeJS: This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `AuthorizationStatus`. Please use `AuthorizationStatus` instead.
+09-03 11:22:49.368 12218 24142 W ReactNativeJS: This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `getToken`. Please use `getToken()` instead.
+09-03 11:22:49.698 12218 24142 I ReactNativeJS: 'Data retrieved from cache for key:', 'dashboard_stats'
+09-03 11:22:49.700 12218 24142 I ReactNativeJS: 'Data retrieved from cache for key:', 'dashboard_stats'
+09-03 11:22:49.729 12218 24142 I ReactNativeJNI: instanceHandle is null, event of type topDetached will be dropped
+09-03 11:22:50.057 12218 24142 I ReactNativeJS: 'NotificationHandler useEffect: user status', 'defined', 'loading:', false
+09-03 11:22:50.173 12218 24142 W ReactNativeJS: 'This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `requestPermission`. Please use `requestPermission()` instead.', { [Component Stack] name: 'Component Stack' }
+09-03 11:22:50.273 12218 24142 W ReactNativeJS: 'This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `onMessage`. Please use `onMessage()` instead.', { [Component Stack] name: 'Component Stack' }
+09-03 11:22:50.369 12218 24142 W ReactNativeJS: 'This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `onNotificationOpenedApp`. Please use `onNotificationOpenedApp()` instead.', { [Component Stack] name: 'Component Stack' }
+09-03 11:22:50.455 12218 24142 W ReactNativeJS: 'This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `getInitialNotification`. Please use `getInitialNotification()` instead.', { [Component Stack] name: 'Component Stack' }
+09-03 11:22:50.459 12218 24142 W ReactNativeJS: This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `AuthorizationStatus`. Please use `AuthorizationStatus` instead.
+09-03 11:22:50.470 12218 24142 W ReactNativeJS: This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22. Method called was `getToken`. Please use `getToken()` instead.
+09-03 11:22:50.498 12218 24142 I ReactNativeJS: 'Data retrieved from cache for key:', 'dashboard_recent_bookings'
+09-03 11:22:50.501 12218 24142 I ReactNativeJS: 'Data retrieved from cache for key:', 'dashboard_recent_bookings'
+09-03 11:22:51.512 12218 24142 E ReactNativeJS: 'Failed to fetch dashboard data from API:', [AxiosError: Network Error]
+09-03 11:22:51.523 12218 24142 E ReactNativeJS: 'Failed to save FCM token on server:', 'Network Error'
+09-03 11:22:51.524 12218 24142 I ReactNativeJS: 'Data retrieved from cache for key:', 'dashboard_stats'
+09-03 11:22:51.870 12218 24142 I ReactNativeJS: 'Data retrieved from cache for key:', 'dashboard_recent_bookings'
+09-03 11:22:52.138 12218 24142 E ReactNativeJS: 'Failed to save FCM token on server:', 'Network Error'
+09-03 11:22:53.107   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:22:53.108   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:23:23.108   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:23:23.108   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:23:29.354 12218 24142 E ReactNativeJS: 'Failed to fetch clients:', [AxiosError: Network Error]
+09-03 11:23:29.371 12218 24142 E ReactNativeJS: 'Failed to fetch clients:', [AxiosError: Network Error]
+09-03 11:23:53.109   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:23:53.109   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:24:23.109   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:24:23.109   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:24:53.110   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:24:53.110   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:24:58.611   446   612 D WificondControl: Scan result ready event
+09-03 11:25:23.110   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:25:23.110   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:25:53.111   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:25:53.111   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:25:57.645   446   609 W SyncManager: Detected sync making no progress for startTime 61016902, mTimeoutStartTime 61016902, mHistoryRowId 71, syncOperation JobId=100944 WhatsApp/com.whatsapp u0 [com.android.contacts] PERIODIC Reason=Periodic (period=1h00m00s flex=2m24s). cancelling.
+09-03 11:25:57.658   446   609 D SyncManager: handleSyncHandlerMessage: dropping since the sync is no longer active: startTime 61016902, mTimeoutStartTime 61016902, mHistoryRowId 71, syncOperation JobId=100944 WhatsApp/com.whatsapp u0 [com.android.contacts] PERIODIC Reason=Periodic (period=1h00m00s flex=2m24s)
+09-03 11:26:23.112   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:26:23.112   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:26:53.112   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:26:53.112   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:27:23.112   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:27:23.113   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:27:38.435   446 15653 D WificondControl: Scan result ready event
+09-03 11:27:53.113   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:27:53.113   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:28:01.270   446   468 E BatteryExternalStatsWorker: no controller energy info supplied for bluetooth
+09-03 11:28:01.270   787   787 E PhoneInterfaceManager: [PhoneIntfMgr] queryModemActivityInfo: Empty response
+09-03 11:28:01.271   446   468 E KernelUidCpuTimeReader: Failed to read uid_cputime: /proc/uid_cputime/show_uid_stat (No such file or directory)
+09-03 11:28:01.271   446   468 E KernelCpuSpeedReader: Failed to read cpu-freq: /sys/devices/system/cpu/cpu0/cpufreq/stats/time_in_state (No such file or directory)
+09-03 11:28:01.272   446   468 E BatteryStatsImpl: failed to read network stats for ifaces: [wlan0]
+09-03 11:28:01.272   446   468 W BatteryExternalStatsWorker: modem info is invalid: ModemActivityInfo{ mTimestamp=0 mSleepTimeMs=0 mIdleTimeMs=0 mTxTimeMs[]=[0, 0, 0, 0, 0] mRxTimeMs=0 mEnergyUsed=0}
+09-03 11:28:23.114   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:28:23.114   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:28:53.114   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:28:53.114   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory
+09-03 11:29:23.115   153   214 E Netd    : Failed to dump IPv4 sockets struct tcp_info: No such file or directory
+09-03 11:29:23.115   153   214 E TcpSocketMonitor: Failed to poll TCP socket info: No such file or directory

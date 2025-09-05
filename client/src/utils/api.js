@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Create an Axios instance
 const api = axios.create({
-    baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api', // Adjust for deployment
+    baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'https://eugotailorpro.onrender.com/api', // Adjust for deployment
     headers: {
         'Content-Type': 'application/json',
     },

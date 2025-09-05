@@ -30,20 +30,15 @@ const allowedOrigins = [
   'exp://172.20.10.3:8081',
   'exp://172.20.10.2:8081',
   'http://localhost:8081',
-  'http://localhost:8082'
+  'http://localhost:8082',
+  'exp+mobile://expo-development-client/?url=http%3A%2F%2F172.20.10.2%3A8081'
 ].filter(Boolean);
 
 app.use(cors({
-  origin: function (origin, callback) {
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+     origin: '*', // Allow all origins for testing
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+   }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
