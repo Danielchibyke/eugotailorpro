@@ -1,21 +1,18 @@
-// server/controllers/clientController.js
+
 import asyncHandler from 'express-async-handler';
 import Client from '../models/Client.js';
-import Booking from '../models/Booking.js'; // Import Booking model
+import Booking from '../models/Booking.js';
+import User from '../models/User.js';
+import { sendPushNotification } from '../utils/notificationService.js';
 
-// @desc    Create a new client
-// @route   POST /api/clients
-// @access  Private (Admin/Staff)
 const createClient = asyncHandler(async (req, res) => {
     const { name, email, phone, address, measurements } = req.body;
 
-    // Basic validation
     if (!name || !phone) {
         res.status(400);
         throw new Error('Please enter client name and phone number.');
     }
 
-    // Check if client with this phone or email already exists (if email provided)
     const phoneExists = await Client.findOne({ phone });
     if (phoneExists) {
         res.status(400);
@@ -35,38 +32,56 @@ const createClient = asyncHandler(async (req, res) => {
         phone,
         address,
         measurements,
-        createdBy: req.user._id, // User who created the client from middleware
+        createdBy: req.user._id,
     });
 
-    res.status(201).json(client);
+    if (client) {
+        const notificationTitle = 'New Client Created!';
+        const notificationBody = `A new client, ${name}, was added by ${req.user.name}.`;
+        const notificationData = { screen: 'ClientDetail', id: client._id.toString() };
+
+        const allRelevantUsers = await User.find({ role: { $in: ['staff', 'admin'] } });
+
+        for (const userToNotify of allRelevantUsers) {
+            if (userToNotify.expoPushToken && userToNotify._id.toString() !== req.user._id.toString()) {
+                await sendPushNotification({
+                    expoPushToken: userToNotify.expoPushToken,
+                    title: notificationTitle,
+                    body: notificationBody,
+                    data: notificationData,
+                });
+            }
+        }
+
+        if (req.user.expoPushToken) {
+            await sendPushNotification({
+                expoPushToken: req.user.expoPushToken,
+                title: notificationTitle,
+                body: notificationBody,
+                data: notificationData,
+            });
+        }
+
+        res.status(201).json(client);
+    } else {
+        res.status(400);
+        throw new Error('Invalid client data');
+    }
 });
 
-// @desc    Get all clients
-// @route   GET /api/clients
-// @access  Private (Admin/Staff)
 const getClients = asyncHandler(async (req, res) => {
-    const clients = await Client.find({}).populate('createdBy', 'name email').lean(); // Use lean() for performance
-
-    // For each client, get the count of their bookings
+    const clients = await Client.find({}).populate('createdBy', 'name email').lean();
     const clientsWithBookingCounts = await Promise.all(
         clients.map(async (client) => {
             const bookingCount = await Booking.countDocuments({ client: client._id });
-            return {
-                ...client,
-                totalBookings: bookingCount,
-            };
+            return { ...client, totalBookings: bookingCount };
         })
     );
-
     res.json(clientsWithBookingCounts);
 });
 
-// @desc    Get client by ID
-// @route   GET /api/clients/:id
-// @access  Private (Admin/Staff)
 const getClientById = asyncHandler(async (req, res) => {
     const client = await Client.findById(req.params.id).populate('createdBy', 'name email');
-
     if (client) {
         res.json(client);
     } else {
@@ -75,12 +90,8 @@ const getClientById = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Update client
-// @route   PUT /api/clients/:id
-// @access  Private (Admin/Staff)
 const updateClient = asyncHandler(async (req, res) => {
     const { name, email, phone, address, measurements } = req.body;
-
     const client = await Client.findById(req.params.id);
 
     if (client) {
@@ -88,30 +99,38 @@ const updateClient = asyncHandler(async (req, res) => {
         client.email = email || client.email;
         client.phone = phone || client.phone;
         client.address = address || client.address;
-
-        // If measurements data is provided, replace the existing array
         if (measurements) {
             client.measurements = measurements;
         }
 
-        // Optionally, check for duplicate email/phone if they are being updated to existing ones
-        if (email && email !== client.email) {
-            const emailExists = await Client.findOne({ email });
-            if (emailExists && String(emailExists._id) !== String(client._id)) {
-                res.status(400);
-                throw new Error('Client with this email already exists.');
-            }
-        }
-        if (phone && phone !== client.phone) {
-            const phoneExists = await Client.findOne({ phone });
-            if (phoneExists && String(phoneExists._id) !== String(client._id)) {
-                res.status(400);
-                throw new Error('Client with this phone number already exists.');
+        const updatedClient = await client.save();
+
+        const notificationTitle = 'Client Profile Updated!';
+        const notificationBody = `${client.name}'s profile was updated by ${req.user.name}.`;
+        const notificationData = { screen: 'ClientDetail', id: client._id.toString() };
+
+        const allRelevantUsers = await User.find({ role: { $in: ['staff', 'admin'] } });
+
+        for (const userToNotify of allRelevantUsers) {
+            if (userToNotify.expoPushToken && userToNotify._id.toString() !== req.user._id.toString()) {
+                await sendPushNotification({
+                    expoPushToken: userToNotify.expoPushToken,
+                    title: notificationTitle,
+                    body: notificationBody,
+                    data: notificationData,
+                });
             }
         }
 
-        const updatedClient = await client.save();
-        
+        if (req.user.expoPushToken) {
+            await sendPushNotification({
+                expoPushToken: req.user.expoPushToken,
+                title: notificationTitle,
+                body: notificationBody,
+                data: notificationData,
+            });
+        }
+
         res.json(updatedClient);
     } else {
         res.status(404);
@@ -119,15 +138,9 @@ const updateClient = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Delete client
-// @route   DELETE /api/clients/:id
-// @access  Private (Admin only, or admin/staff for own clients)
 const deleteClient = asyncHandler(async (req, res) => {
     const client = await Client.findById(req.params.id);
-
     if (client) {
-        // Optional: Add logic to check if req.user has permission to delete this client
-        // E.g., if (req.user.role !== 'admin' && String(client.createdBy) !== String(req.user._id)) { ... }
         await Client.deleteOne({ _id: client._id });
         res.json({ message: 'Client removed' });
     } else {
@@ -136,24 +149,18 @@ const deleteClient = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Update client measurements
-// @route   PUT /api/clients/:id/measurements
-// @access  Private (Admin/Staff)
 const updateClientMeasurements = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const measurements = req.body; 
+    const measurements = req.body;
     const updatedClient = await Client.findOneAndUpdate(
         { _id: id },
-        { $set: { measurements: measurements } }, // Use $set to update the subdocument
-        { new: true, runValidators: true } // Return the updated document and run schema validators
+        { $set: { measurements: measurements } },
+        { new: true, runValidators: true }
     );
 
     if (updatedClient) {
-        console.log('Measurements updated successfully for client:', updatedClient.name);
-        console.log('Saved client measurements:', updatedClient.measurements);
         res.json(updatedClient);
     } else {
-        console.log('Client not found for ID:', id);
         res.status(404);
         throw new Error('Client not found');
     }
@@ -165,5 +172,5 @@ export {
     getClientById,
     updateClient,
     deleteClient,
-    updateClientMeasurements, // Export the new function
+    updateClientMeasurements,
 };

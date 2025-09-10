@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Eugo",
+    "slug": "eugo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.danielchibyke.mobile",
+      "bundleIdentifier": "com.eugoclothing.eugo",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -25,7 +25,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.danielchibyke.mobile",
+      "package": "com.eugoclothing.eugo",
       "googleServicesFile": "./android/app/google-services.json"
     },
     "web": {

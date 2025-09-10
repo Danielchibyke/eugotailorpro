@@ -1,36 +1,27 @@
 import { Expo } from 'expo-server-sdk';
-import User from '../models/User.js';
 
 const expo = new Expo();
 
-const sendNotification = async (userId, title, body, data) => {
+const sendPushNotification = async ({ expoPushToken, title, body, data }) => {
+    if (!Expo.isExpoPushToken(expoPushToken)) {
+        console.error(`Push token ${expoPushToken} is not a valid Expo push token`);
+        return;
+    }
+
+    const message = {
+        to: expoPushToken,
+        sound: 'default',
+        title,
+        body,
+        data,
+    };
+
     try {
-        const user = await User.findById(userId);
-        if (!user || !user.expoPushToken) {
-            console.log(`User ${userId} not found or has no push token.`);
-            return;
-        }
-
-        const pushToken = user.expoPushToken;
-
-        if (!Expo.isExpoPushToken(pushToken)) {
-            console.error(`Push token ${pushToken} is not a valid Expo push token`);
-            return;
-        }
-
-        const message = {
-            to: pushToken,
-            sound: 'default',
-            title,
-            body,
-            data,
-        };
-
         await expo.sendPushNotificationsAsync([message]);
-        console.log(`Notification sent to user ${userId}`);
+        console.log(`Notification sent to token ${expoPushToken}`);
     } catch (error) {
-        console.error('Error sending notification:', error);
+        console.error(`Error sending notification to token ${expoPushToken}:`, error);
     }
 };
 
-export default sendNotification;
+export { sendPushNotification };

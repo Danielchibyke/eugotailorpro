@@ -22,13 +22,13 @@ const UserManagementScreen = () => {
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
-            console.log('Fetching users from /auth/users...'); // Debug log
+           
             const { data } = await api.get('/auth/users');
-            console.log('Users fetched successfully:', data); // Debug log
+          
             setUsers(data);
         } catch (error) {
             console.error('Failed to fetch users:', error);
-            console.error('Error response data:', error.response?.data); // Debug log
+           
             showNotification(error.response?.data?.msg || 'Failed to fetch users.', 'error');
         } finally {
             setLoading(false);

@@ -1,79 +1,95 @@
 import React, { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
-import messaging, { getMessaging } from '@react-native-firebase/messaging';
+import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerForPushNotificationsAsync } from '../utils/notificationService';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext'; // Import useNotification
 import { getApi } from '../utils/api';
-import { useNavigation } from '@react-navigation/native'; // Import useNavigation
+import { useNavigation } from '@react-navigation/native';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const NotificationHandler = () => {
-  const { user, loading } = useAuth(); // Get loading state from useAuth
-  const { showNotification } = useNotification(); // Use the hook
-  const navigation = useNavigation(); // Get navigation object
+  const { user, loading } = useAuth();
+  const navigation = useNavigation();
+  const notificationListener = useRef();
+  const responseListener = useRef();
 
   useEffect(() => {
-    console.log('NotificationHandler useEffect: user status', user ? 'defined' : 'undefined', 'loading:', loading);
-    if (!loading && user) { // Only proceed if not loading and user is defined
-      registerForPushNotificationsAsync().then(token => {
-        // console.log('Generated FCM Push Token:', token);
-        if (token) {
-          // Send the token to your backend
-          getApi().post('/notifications/save-token', { expoPushToken: token, userId: user._id }) // Keep expoPushToken field name for now
-            .then(res => console.log('FCM token saved on server'))
-            .catch(err => console.error('Failed to save FCM token on server:', err.response?.data || err.message));
+    if (!loading && user) {
+      const managePushToken = async () => {
+        try {
+          const newPushToken = await registerForPushNotificationsAsync();
+          if (!newPushToken) return; // Exit if no token could be generated
+
+          const currentToken = await AsyncStorage.getItem('expoPushToken');
+
+          if (newPushToken !== currentToken) {
+            console.log(`New or updated push token [${newPushToken}], updating server.`);
+            await getApi().put('/auth/update-pushtoken', { expoPushToken: newPushToken });
+            await AsyncStorage.setItem('expoPushToken', newPushToken);
+            console.log('Successfully saved new push token.');
+          } else {
+            console.log('Push token is already up-to-date.');
+          }
+        } catch (err) {
+          console.error('Failed to manage push token:', err.response?.data || err.message);
         }
+      };
+
+      managePushToken();
+
+      notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+        console.log('Notification received while app is foregrounded:', notification);
       });
 
-      // Handle foreground messages
-      const unsubscribeOnMessage = getMessaging().onMessage(async remoteMessage => {
-        // console.log('FCM Message received in foreground:', remoteMessage);
-        // Display in-app notification
-        showNotification(remoteMessage.notification.title + ': ' + remoteMessage.notification.body);
-      });
-
-      // Handle messages when the app is in the background or quit and opened by tapping a notification
-      const unsubscribeOnNotificationOpenedApp = getMessaging().onNotificationOpenedApp(remoteMessage => {
-        // console.log('FCM Notification opened app from background state:', remoteMessage);
-        const { screen, id } = remoteMessage.data || {};
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+        console.log('Notification tapped:', response);
+        const { screen, id } = response.notification.request.content.data;
         if (screen && navigation) {
-          const mainTabsScreens = ['Dashboard', 'Bookings', 'Clients', 'Financials'];
+          const mainTabsScreens = ['Dashboard', 'Bookings', 'Clients', 'Financials', 'Gallery'];
           if (mainTabsScreens.includes(screen)) {
-            navigation.navigate('MainTabs', { screen: screen, params: { id } });
+            navigation.navigate('MainTabs', { screen, params: { id } });
           } else {
             navigation.navigate(screen, { id });
           }
-        } else if (navigation) {
-          navigation.navigate('MainTabs', { screen: 'Dashboard' });
         }
       });
 
-      // Check if app was opened from a quit state by a notification
-      getMessaging().getInitialNotification().then(remoteMessage => {
-        if (remoteMessage) {
-          // console.log('FCM Notification opened app from quit state:', remoteMessage);
-          const { screen, id } = remoteMessage.data || {};
+      Notifications.getLastNotificationResponseAsync().then(response => {
+        if (response) {
+          console.log('App launched by notification:', response);
+          const { screen, id } = response.notification.request.content.data;
           if (screen && navigation) {
-            const mainTabsScreens = ['Dashboard', 'Bookings', 'Clients', 'Financials'];
-            if (mainTabsScreens.includes(screen)) {
-              navigation.navigate('MainTabs', { screen: screen, params: { id } });
-            } else {
-              navigation.navigate(screen, { id });
-            }
-          } else if (navigation) {
-            navigation.navigate('MainTabs', { screen: 'Dashboard' });
+            setTimeout(() => {
+              const mainTabsScreens = ['Dashboard', 'Bookings', 'Clients', 'Financials', 'Gallery'];
+              if (mainTabsScreens.includes(screen)) {
+                navigation.navigate('MainTabs', { screen, params: { id } });
+              } else {
+                navigation.navigate(screen, { id });
+              }
+            }, 1000);
           }
         }
       });
 
       return () => {
-        unsubscribeOnMessage();
-        unsubscribeOnNotificationOpenedApp();
+        if (notificationListener.current) {
+          Notifications.removeNotificationSubscription(notificationListener.current);
+        }
+        if (responseListener.current) {
+          Notifications.removeNotificationSubscription(responseListener.current);
+        }
       };
     }
-  }, [user, loading, showNotification, navigation]); // Add loading to dependency array
+  }, [user, loading, navigation]);
 
-  return null; // This component doesn't render any UI directly
+  return null;
 };
 
 export default NotificationHandler;

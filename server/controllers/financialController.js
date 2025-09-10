@@ -3,7 +3,7 @@ import Transaction from '../models/Transaction.js';
 import Client from '../models/Client.js';
 import BalanceRecord from '../models/BalanceRecord.js';
 import User from '../models/User.js'; // Import User model
-import { sendPushNotification } from './notificationController.js'; // Import notification sender
+import { sendPushNotification } from '../utils/notificationService.js'; // Import notification sender
 
 // ... (createTransaction, getTransactions, etc. - no changes needed there)
 const createTransaction = asyncHandler(async (req, res) => {

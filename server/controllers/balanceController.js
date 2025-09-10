@@ -2,7 +2,7 @@ import asyncHandler from 'express-async-handler';
 import BalanceRecord from '../models/BalanceRecord.js';
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js'; // Import User model
-import { sendPushNotification } from './notificationController.js'; // Import notification sender
+import { sendPushNotification } from '../utils/notificationService.js'; // Import notification sender
 
 // @desc    Set the last balanced date and balances
 // @route   POST /api/balances/setLastBalancedDate

@@ -244,4 +244,20 @@ const deleteUser = asyncHandler(async (req, res) => {
     res.json({ message: 'User removed successfully' });
 });
 
-export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser };
+
+// @desc    Update user's expo push token
+// @route   PUT /api/auth/update-pushtoken
+// @access  Private
+const updateUserPushToken = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+    if (user) {
+        user.expoPushToken = req.body.expoPushToken;
+        await user.save();
+        res.json({ message: 'Push token updated successfully' });
+    } else {
+        res.status(404);
+        throw new Error('User not found');
+    }
+});
+
+export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser, updateUserPushToken };

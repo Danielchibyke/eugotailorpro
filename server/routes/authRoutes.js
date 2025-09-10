@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser } from '../controllers/authController.js';
+import { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser, updateUserPushToken } from '../controllers/authController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -13,5 +13,7 @@ router.put('/profile', protect, updateUserProfile);
 router.get('/users', protect, getAllUsers);
 router.put('/users/:id/role', protect, authorizeRoles('admin'), updateUserRole); // New route for updating user role
 router.delete('/users/:id', protect, authorizeRoles('admin'), deleteUser); // New route for deleting user
+router.put('/update-pushtoken', protect, updateUserPushToken);
+
 
 export default router;

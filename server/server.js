@@ -8,7 +8,7 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import financialRoutes from './routes/financialRoutes.js'; 
 import balanceRoutes from './routes/balanceRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
-import notificationRoutes from './routes/notificationRoutes.js';
+
 import designRoutes from './routes/designRoutes.js';
 import startReminderScheduler from './utils/reminderScheduler.js'; 
 
@@ -52,7 +52,7 @@ app.use('/api/bookings', bookingRoutes);       // Use booking routes
 app.use('/api/transactions', financialRoutes); // Use financial routes
 app.use('/api/balances', balanceRoutes); // Use balance routes
 app.use('/api/upload', uploadRoutes); // Use upload routes
-app.use('/api/notifications', notificationRoutes); // Use notification routes
+
 app.use('/api/designs', designRoutes); // Use design routes
 
 

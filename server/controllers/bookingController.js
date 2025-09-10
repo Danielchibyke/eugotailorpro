@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import Booking from '../models/Booking.js';
 import Client from '../models/Client.js'; // Needed to validate client existence
 import User from '../models/User.js'; // Needed to get other staff members' push tokens
-import { sendPushNotification } from './notificationController.js'; // Import the notification sender
+import { sendPushNotification } from '../utils/notificationService.js'; // Import the notification sender
 
 // @desc    Create a new booking
 // @route   POST /api/bookings
