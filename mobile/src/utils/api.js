@@ -18,7 +18,7 @@ let refreshTokenPromise = null;
 
 const getApi = () => {
     const api = axios.create({
-        baseURL: "http://172.20.10.3:5000/api",
+        baseURL: "https://eugotailorpro.onrender.com/api",
         timeout: 800000,
         headers: {
             'Content-Type': 'application/json',

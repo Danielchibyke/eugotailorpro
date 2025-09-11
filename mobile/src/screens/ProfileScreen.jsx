@@ -22,31 +22,36 @@ const ProfileScreen = ({ navigation }) => {
             </View>
             <View style={styles.profileContainer}>
                 <Image
-                    source={{ uri: user.profilePicture || 'https://via.placeholder.com/150' }}
+                    source={{ uri: 'https://www.gravatar.com/avatar/?d=mp' }}
                     style={styles.profileImage}
                 />
                 <Text style={styles.userName}>{user.name}</Text>
                 <Text style={styles.userEmail}>{user.email}</Text>
             </View>
-            <TouchableOpacity
-                style={styles.editProfileButton}
-                onPress={() => navigation.navigate('EditProfile')}
-            >
-                <Text style={styles.editProfileButtonText}>Edit Profile</Text>
-            </TouchableOpacity>
-
-            {user?.role === 'admin' && (
+            <View style={{ marginTop: theme.SPACING.lg }}>
                 <TouchableOpacity
-                    style={[styles.editProfileButton, styles.userManagementButton]}
-                    onPress={() => navigation.navigate('UserManagement')}
+                    style={styles.actionButton}
+                    onPress={() => navigation.navigate('EditProfile')}
                 >
-                    <Text style={styles.editProfileButtonText}>User Management</Text>
+                    <Ionicons name="person-outline" size={24} style={styles.actionIcon} />
+                    <Text style={styles.actionButtonText}>Edit Profile</Text>
                 </TouchableOpacity>
-            )}
 
-            <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-                <Text style={styles.logoutButtonText}>Logout</Text>
-            </TouchableOpacity>
+                {user?.role === 'admin' && (
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => navigation.navigate('UserManagement')}
+                    >
+                        <Ionicons name="people-outline" size={24} style={styles.actionIcon} />
+                        <Text style={styles.actionButtonText}>User Management</Text>
+                    </TouchableOpacity>
+                )}
+
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.COLORS.white }]} onPress={logout}>
+                    <Ionicons name="log-out-outline" size={24} color={theme.COLORS.danger} />
+                    <Text style={[styles.actionButtonText, { color: theme.COLORS.danger }]}>Logout</Text>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 };
@@ -75,9 +80,9 @@ const styles = StyleSheet.create({
         padding: theme.SPACING.lg,
     },
     profileImage: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: 200,
+        height: 200,
+        borderRadius: 100,
         marginBottom: theme.SPACING.md,
     },
     userName: {
@@ -118,6 +123,29 @@ const styles = StyleSheet.create({
     userManagementButton: {
         marginTop: theme.SPACING.md,
         backgroundColor: theme.COLORS.darkPrimary,
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.COLORS.cardBackground,
+        padding: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.md,
+        marginHorizontal: theme.SPACING.lg,
+        marginBottom: theme.SPACING.sm,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    actionButtonText: {
+        fontSize: theme.FONT_SIZES.md,
+        color: theme.COLORS.textDark,
+        marginLeft: theme.SPACING.sm,
+        fontWeight: '500',
+    },
+    actionIcon: {
+        color: theme.COLORS.primary,
     },
 });
 

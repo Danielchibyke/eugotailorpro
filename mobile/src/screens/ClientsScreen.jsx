@@ -77,25 +77,7 @@ const ClientsScreen = ({ navigation }) => {
     }, [searchQuery, clients]);
 
     const renderHeader = () => (
-        <>
-            <View style={styles.headerContainer}>
-                <Text style={styles.headerTitle}>Client Management</Text>
-                <View style={styles.balanceContainer}>
-                    <Text style={styles.balanceLabel}>Total Clients</Text>
-                    <Text style={styles.balanceValue}>{clients.length}</Text>
-                </View>
-            </View>
-            <View style={styles.searchContainer}>
-                <Ionicons name="search" size={20} color={theme.COLORS.textMedium} style={styles.searchIcon} />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search by name..."
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholderTextColor={theme.COLORS.textMedium}
-                />
-            </View>
-        </>
+        <></> // renderHeader will now be empty
     );
 
     if (loading && clients.length === 0) {
@@ -108,6 +90,27 @@ const ClientsScreen = ({ navigation }) => {
 
     return (
         <BackgroundContainer>
+            <View style={styles.fixedHeader}>
+                <View style={styles.headerContainer}>
+
+                <View style={styles.searchContainer}>
+                    <Ionicons name="search" size={20} color={theme.COLORS.textMedium} style={styles.searchIcon} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search by name..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        placeholderTextColor={theme.COLORS.textMedium}
+                    />
+                </View>
+                 
+                    <View style={styles.balanceContainer}>
+                        <Text style={styles.balanceLabel}>Total Clients</Text>
+                        <Text style={styles.balanceValue}>{clients.length}</Text>
+                    </View>
+               
+                </View>
+            </View>
             <FlatList
                 data={filteredClients}
                 renderItem={({ item }) => (
@@ -119,8 +122,8 @@ const ClientsScreen = ({ navigation }) => {
                     />
                 )}
                 keyExtractor={(item) => item._id}
-                ListHeaderComponent={renderHeader}
-                contentContainerStyle={styles.list}
+                // ListHeaderComponent={renderHeader} // Removed as header is now fixed
+                contentContainerStyle={[styles.list, { paddingTop: 0}]} // Adjust paddingTop based on header height
                 ListEmptyComponent={
                     <View style={styles.emptyStateContainer}>
                         <Text style={styles.emptyStateText}>No clients found.</Text>
@@ -150,12 +153,22 @@ const styles = StyleSheet.create({
         paddingBottom: 80,
     },
     headerContainer: {
+        display: 'flex',
         backgroundColor: theme.COLORS.primary,
         paddingHorizontal: theme.SPACING.lg,
         paddingTop: theme.SPACING.lg,
         paddingBottom: theme.SPACING.xl,
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30,
+        height: 110,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 20,
+        marginBottom: theme.SPACING.md,
+        elevation: 4,
+        shadowColor: '#000',
+        height: 170,
+        
     },
     headerTitle: {
         fontSize: theme.FONT_SIZES.h2,
@@ -172,7 +185,7 @@ const styles = StyleSheet.create({
         color: theme.COLORS.textLight,
     },
     balanceValue: {
-        fontSize: 42,
+        fontSize: 32,
         fontWeight: 'bold',
         color: theme.COLORS.textLight,
     },
@@ -182,14 +195,15 @@ const styles = StyleSheet.create({
         backgroundColor: theme.COLORS.backgroundCard,
         borderRadius: theme.BORDERRADIUS.md,
         marginHorizontal: theme.SPACING.lg,
-        marginTop: -theme.SPACING.xl + 10,
-        marginBottom: theme.SPACING.md,
+        marginBottom: -theme.SPACING.md,
+        marginTop: 40,
         paddingHorizontal: theme.SPACING.md,
         elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        width: '100%',
     },
     searchIcon: {
         marginRight: theme.SPACING.sm,
@@ -234,6 +248,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 8,
+    },
+    fixedHeader: {
+        backgroundColor: theme.COLORS.background,
+        zIndex: 1,
     },
 });
 

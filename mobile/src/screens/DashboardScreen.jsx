@@ -115,7 +115,7 @@ const DashboardScreen = ({ navigation }) => {
             >
                 <View style={styles.header}>
                     <Text style={styles.headerGreeting}>Hello, {user && user.name ? user.name : 'User'}!</Text>
-                    <Text style={styles.headerSlogan}>Your business at a glance.</Text>
+                    <Text style={styles.headerSlogan}>🙌🙌</Text>
                 </View>
 
                 <View style={styles.statsGrid}>
@@ -130,8 +130,7 @@ const DashboardScreen = ({ navigation }) => {
                     <View style={styles.quickActionsGrid}>
                         <QuickActionButton icon="add-circle-outline" label="New Booking" onPress={() => navigation.navigate('AddBooking')} />
                         <QuickActionButton icon="person-add-outline" label="New Client" onPress={() => navigation.navigate('AddClient')} />
-                        <QuickActionButton icon="receipt-outline" label="Add Expense" onPress={() => navigation.navigate('Financials', { openModal: true, type: 'expense' })} />
-                        <QuickActionButton icon="cash-outline" label="Add Income" onPress={() => navigation.navigate('Financials', { openModal: true, type: 'income' })} />
+                        <QuickActionButton icon="swap-horizontal-outline" label="Add Transaction" onPress={() => navigation.navigate('Financials', { openModal: true })} />
                         {user?.role === 'admin' && (
                             <QuickActionButton icon="person-add-outline" label="Register User" onPress={() => navigation.navigate('Register')} />
                         )}
@@ -234,7 +233,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: theme.FONT_SIZES.h4, // Smaller title for quick actions
         fontWeight: 'bold',
-        color: theme.COLORS.primary,
+        color: theme.COLORS.textLight,
         marginBottom: theme.SPACING.sm,
         textAlign: 'center',
     },

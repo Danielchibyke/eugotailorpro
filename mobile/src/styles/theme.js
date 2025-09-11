@@ -14,7 +14,7 @@ export const COLORS = {
   error: '#dc3545',
   white: '#ffffff',
   overlayBackground: 'rgba(0,0,0,0.5)',
-  danger: 'red'
+  danger: '#B83D3D'
 };
 
 export const FONT_SIZES = {

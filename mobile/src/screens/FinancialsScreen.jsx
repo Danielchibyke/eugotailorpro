@@ -72,9 +72,20 @@ const FinancialsScreen = ({ navigation }) => {
     useEffect(() => {
         fetchTransactions();
         fetchClients();
-        const unsubscribe = navigation.addListener('focus', fetchTransactions);
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchTransactions();
+            if (navigation.getState().routes[navigation.getState().index].params?.openModal) {
+                openAddTransactionModal();
+                navigation.setParams({ openModal: false }); // Reset param
+            }
+        });
+        // Initial check on component mount
+        if (navigation.getState().routes[navigation.getState().index].params?.openModal) {
+            openAddTransactionModal();
+            navigation.setParams({ openModal: false }); // Reset param
+        }
         return unsubscribe;
-    }, [navigation, fetchTransactions, fetchClients]);
+    }, [navigation, fetchTransactions, fetchClients, openAddTransactionModal]);
 
     const handleInputChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
