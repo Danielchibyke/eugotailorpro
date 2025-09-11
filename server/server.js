@@ -11,7 +11,7 @@ import uploadRoutes from './routes/uploadRoutes.js';
 
 import designRoutes from './routes/designRoutes.js';
 import startReminderScheduler from './utils/reminderScheduler.js'; 
-
+import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 
 dotenv.config();
@@ -55,6 +55,9 @@ app.use('/api/upload', uploadRoutes); // Use upload routes
 
 app.use('/api/designs', designRoutes); // Use design routes
 
+// Error handling middleware
+app.use(notFound);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

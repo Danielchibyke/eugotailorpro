@@ -4,33 +4,36 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { theme } from '../styles/theme';
 import BackgroundContainer from '../components/BackgroundContainer';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const LoginScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showDeactivatedAlert, setShowDeactivatedAlert] = useState(false);
+    const [deactivatedMessage, setDeactivatedMessage] = useState('');
     const { login } = useAuth();
     const { showNotification } = useNotification();
 
     const handleLogin = async () => {
-        console.log('handleLogin triggered');
+        setShowDeactivatedAlert(false); // Hide previous alert
         if (!email || !password) {
-            console.log('Email or password missing');
             showNotification('Please enter both email and password.', 'error');
             return;
         }
-        console.log('Setting loading to true ');
         setLoading(true);
        
         try {
-            console.log('Calling login function from AuthContext');
             await login(email, password);
-            console.log('Login function call finished');
         } catch (err) {
-            console.error('Error during login:', err);
-            showNotification(err.response?.data?.msg || 'Login failed. Please check your credentials.', 'error');
+            const errorMessage = err.response?.data?.message || 'Login failed. Please check your credentials.';
+            if (errorMessage === 'Your account is deactivated. Please contact support.') {
+                setDeactivatedMessage(errorMessage);
+                setShowDeactivatedAlert(true);
+            } else {
+                showNotification(errorMessage, 'error');
+            }
         } finally {
-            console.log('Setting loading to false');
             setLoading(false);
         }
     };
@@ -70,6 +73,15 @@ const LoginScreen = ({ navigation }) => {
                     <Text style={styles.linkText}>Don't have an account? Register</Text>
                 </TouchableOpacity>
             </View>
+
+            {showDeactivatedAlert && (
+                <View style={styles.deactivatedAlertCard}>
+                    <Text style={styles.deactivatedAlertText}>{deactivatedMessage}</Text>
+                    <TouchableOpacity onPress={() => setShowDeactivatedAlert(false)} style={styles.closeButton}>
+                        <Ionicons name="close-circle" size={24} color={theme.COLORS.textLight} />
+                    </TouchableOpacity>
+                </View>
+            )}
         </BackgroundContainer>
 
     );
@@ -121,6 +133,34 @@ const styles = StyleSheet.create({
     linkText: {
         color: theme.COLORS.textLight,
         marginTop: theme.SPACING.md,
+    },
+    deactivatedAlertCard: {
+        position: 'absolute',
+        top: 100, // Fixed top position for debugging
+        left: '5%',
+        right: '5%',
+        backgroundColor: theme.COLORS.danger, // Use danger color for this specific alert
+        padding: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+        zIndex: 99999, // Very high zIndex for debugging
+    },
+    deactivatedAlertText: {
+        color: theme.COLORS.textLight,
+        flex: 1,
+        marginRight: theme.SPACING.sm,
+        fontSize: theme.FONT_SIZES.md,
+        fontWeight: 'bold',
+    },
+    closeButton: {
+        padding: theme.SPACING.xs,
     },
 });
 

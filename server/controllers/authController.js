@@ -53,6 +53,10 @@ const loginUser = asyncHandler(async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
+        if (!user.isActive) {
+            res.status(401);
+            throw new Error('Your account is deactivated. Please contact support.');
+        }
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
 
@@ -260,4 +264,43 @@ const updateUserPushToken = asyncHandler(async (req, res) => {
     }
 });
 
-export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser, updateUserPushToken };
+// @desc    Update a user's active status (Admin only)
+// @route   PUT /api/auth/users/:id/status
+// @access  Private/Admin
+const updateUserStatus = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    // Validate isActive
+    if (typeof isActive !== 'boolean') {
+        res.status(400);
+        throw new Error('Invalid "isActive" status provided. It must be a boolean.');
+    }
+
+    const userToUpdate = await User.findById(id);
+
+    if (!userToUpdate) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Prevent admin from deactivating themselves
+    if (userToUpdate._id.toString() === req.user._id.toString()) {
+        res.status(400);
+        throw new Error('You cannot deactivate your own account.');
+    }
+
+    userToUpdate.isActive = isActive;
+    const updatedUser = await userToUpdate.save();
+
+    res.json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        isActive: updatedUser.isActive,
+    });
+});
+
+
+export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser, updateUserPushToken, updateUserStatus };

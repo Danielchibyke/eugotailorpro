@@ -1,15 +1,40 @@
- ERROR  Warning: useInsertionEffect must not schedule updates.
+Android Bundled 182ms index.ts (1 module)        
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ WARN  This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22 Please use `getApps()` instead.
+ LOG  Network is online. Processing offline queue...
+ LOG  Network is online. Processing offline queue...
+ LOG  Network is online. Processing offline queue...
+ LOG  showDeactivatedAlert: false
+ ERROR  Warning: Text strings must be rendered within a <Text> component.
 
 Call Stack
-  React.forwardRef$argument_0 (node_modules\react-native\Libraries\Animated\createAnimatedComponent.js)
-  NotificationProvider (src\context\NotificationContext.jsx)
-  RCTView (<anonymous>)
-  React.forwardRef$argument_0 (node_modules\react-native\Libraries\Components\View\View.js)
-  App (App.jsx)
-  WithDevTools (node_modules\expo\src\launch\withDevTools.tsx)
-  RCTView (<anonymous>)
-  React.forwardRef$argument_0 (node_modules\react-native\Libraries\Components\View\View.js)
-  RCTView (<anonymous>)
-  React.forwardRef$argument_0 (node_modules\react-native\Libraries\Components\View\View.js)
-  AppContainer (node_modules\react-native\Libraries\ReactNative\AppContainer-dev.js)
-  ComponentWithDisplayName (node_modules\react-native\Libraries\ReactNative\getCachedComponentWithDebugName.js)
+  ScreenContentWrapper (<anonymous>)
+  RNSScreenStack (<anonymous>)
+  RNCSafeAreaProvider (<anonymous>)
+  AuthStack (<anonymous>)
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false
+ LOG  API Interceptor (401): No active refresh. Initiating refresh.
+ ERROR  Error in login function: [AxiosError: Request failed with status code 401]
+ LOG  Full error object: [AxiosError: Request failed with status code 401]
+ LOG  Error response data: {"message": "Your account is deactivated. Please contact support.", "stack": "Error: Your account is deactivated. Please contact support.
+    at file:///C:/Users/POGBA/Documents/GitHub/eugotailorpro/server/controllers/authController.js:58:19"}
+ LOG  Error response status: 401
+ LOG  Error message (err.message): Request failed with status code 401
+ LOG  Login Error Message: Login failed. Please check your credentials.
+ LOG  showDeactivatedAlert: false
+ LOG  showDeactivatedAlert: false

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,36 +11,37 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const UserManagementScreen = () => {
     const navigation = useNavigation();
-    const { user: currentUser } = useAuth(); // Current logged-in user
+    const { user: currentUser } = useAuth();
     const { showNotification } = useNotification();
-    const api = useMemo(() => getApi(), []); // Memoize the API instance
+    const api = useMemo(() => getApi(), []);
 
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [updatingUserId, setUpdatingUserId] = useState(null); // To track which user is being updated
+    const [updatingUserId, setUpdatingUserId] = useState(null);
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
-           
             const { data } = await api.get('/auth/users');
-          
             setUsers(data);
         } catch (error) {
             console.error('Failed to fetch users:', error);
-           
             showNotification(error.response?.data?.msg || 'Failed to fetch users.', 'error');
         } finally {
             setLoading(false);
         }
     }, [api, showNotification]);
 
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
     const handleRoleChange = useCallback(async (userId, newRole) => {
         setUpdatingUserId(userId);
         try {
             await api.put(`/auth/users/${userId}/role`, { role: newRole });
             showNotification('User role updated successfully!', 'success');
-            fetchUsers(); // Refresh the list
+            fetchUsers();
         } catch (error) {
             console.error('Failed to update user role:', error);
             showNotification(error.response?.data?.msg || 'Failed to update user role.', 'error');
@@ -49,9 +50,46 @@ const UserManagementScreen = () => {
         }
     }, [api, showNotification, fetchUsers]);
 
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
+    const handleToggleActive = useCallback(async (userId, currentStatus, forceActivate = false) => {
+        if (userId === currentUser._id) {
+            showNotification('You cannot deactivate/reactivate your own account.', 'error');
+            return;
+        }
+
+        const newStatus = forceActivate ? true : !currentStatus;
+        const action = newStatus ? 'activate' : 'deactivate';
+        const alertTitle = newStatus ? 'Activate User' : 'Deactivate User';
+        const alertMessage = newStatus
+            ? `Are you sure you want to activate this user? They will be able to log in.`
+            : `Are you sure you want to deactivate this user? They will not be able to log in.`;
+
+        const performUpdate = async () => {
+            setUpdatingUserId(userId);
+            try {
+                await api.put(`/auth/users/${userId}/status`, { isActive: newStatus });
+                showNotification(`User ${action}d successfully!`, 'success');
+                fetchUsers();
+            } catch (error) {
+                console.error(`Failed to ${action} user:`, error);
+                showNotification(error.response?.data?.msg || `Failed to ${action} user.`, 'error');
+            } finally {
+                setUpdatingUserId(null);
+            }
+        };
+
+        if (forceActivate) { // If activating via dedicated button, proceed directly
+            performUpdate();
+        } else { // If toggling via switch, show confirmation for both activate/deactivate
+            Alert.alert(
+                alertTitle,
+                alertMessage,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: action === 'deactivate' ? 'Deactivate' : 'Activate', style: 'destructive', onPress: performUpdate },
+                ]
+            );
+        }
+    }, [api, showNotification, fetchUsers, currentUser]);
 
     const handleDeleteUser = useCallback(async (userId, userRole) => {
         if (userId === currentUser._id) {
@@ -80,7 +118,7 @@ const UserManagementScreen = () => {
                         try {
                             await api.delete(`/auth/users/${userId}`);
                             showNotification('User deleted successfully!', 'success');
-                            fetchUsers(); // Refresh the list
+                            fetchUsers();
                         } catch (error) {
                             console.error('Failed to delete user:', error);
                             showNotification(error.response?.data?.msg || 'Failed to delete user.', 'error');
@@ -94,7 +132,7 @@ const UserManagementScreen = () => {
     }, [api, showNotification, fetchUsers, currentUser, users]);
 
     const renderUserItem = ({ item }) => (
-        <View style={styles.userCard}>
+        <View style={[styles.userCard, !item.isActive && styles.deactivatedCard]}>
             <View style={styles.userInfo}>
                 <View style={styles.nameAndRole}>
                     <Text style={styles.userName}>{item.name}</Text>
@@ -110,26 +148,54 @@ const UserManagementScreen = () => {
                         selectedValue={item.role}
                         onValueChange={(itemValue) => handleRoleChange(item._id, itemValue)}
                         style={styles.rolePicker}
-                        enabled={currentUser?.role === 'admin' && item._id !== currentUser._id} // Only admin can change roles, and not their own
+                        enabled={currentUser?.role === 'admin' && item._id !== currentUser._id && item.isActive} // Disabled if deactivated
                     >
                         <Picker.Item label="Admin" value="admin" />
                         <Picker.Item label="Staff" value="staff" />
                         <Picker.Item label="User" value="user" />
                     </Picker>
-                    {updatingUserId === item._id && (
-                        <ActivityIndicator size="small" color={theme.COLORS.primary} style={styles.activityIndicator} />
+                </View>
+                <View style={styles.actionButtons}>
+                    {item.isActive ? ( // Show switch if active
+                        <View style={styles.switchContainer}>
+                            <Switch
+                                trackColor={{ false: '#767577', true: theme.COLORS.primary }}
+                                thumbColor={item.isActive ? theme.COLORS.white : '#f4f3f4'}
+                                ios_backgroundColor="#3e3e3e"
+                                onValueChange={() => handleToggleActive(item._id, item.isActive)}
+                                value={item.isActive}
+                                disabled={updatingUserId === item._id || item._id === currentUser._id}
+                            />
+                            <Text style={styles.switchLabel}>{item.isActive ? 'Active' : 'Inactive'}</Text>
+                        </View>
+                    ) : ( // Show activate button if deactivated
+                        currentUser?.role === 'admin' && item._id !== currentUser._id && (
+                            <TouchableOpacity
+                                style={styles.activateButton}
+                                onPress={() => handleToggleActive(item._id, item.isActive, true)} // Force activate
+                                disabled={updatingUserId === item._id}
+                            >
+                                <Ionicons name="checkmark-circle-outline" size={20} color={theme.COLORS.white} />
+                                <Text style={styles.activateButtonText}>Activate</Text>
+                            </TouchableOpacity>
+                        )
+                    )}
+                    {currentUser?.role === 'admin' && item._id !== currentUser._id && (
+                        <TouchableOpacity
+                            style={styles.deleteButton}
+                            onPress={() => handleDeleteUser(item._id, item.role)}
+                            disabled={updatingUserId === item._id}
+                        >
+                            <Ionicons name="trash-outline" size={20} color={theme.COLORS.white} />
+                        </TouchableOpacity>
                     )}
                 </View>
-                {currentUser?.role === 'admin' && item._id !== currentUser._id && (
-                    <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => handleDeleteUser(item._id, item.role)}
-                        disabled={updatingUserId === item._id}
-                    >
-                        <Ionicons name="trash-outline" size={20} color={theme.COLORS.white} />
-                    </TouchableOpacity>
-                )}
             </View>
+            {updatingUserId === item._id && (
+                <View style={styles.updatingOverlay}>
+                    <ActivityIndicator size="large" color={theme.COLORS.primary} />
+                </View>
+            )}
         </View>
     );
 
@@ -151,7 +217,7 @@ const UserManagementScreen = () => {
                 </View>
             </BackgroundContainer>
         );
-    }
+    };
 
     return (
         <BackgroundContainer>
@@ -206,24 +272,25 @@ const styles = StyleSheet.create({
         padding: theme.SPACING.md,
     },
     userCard: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         backgroundColor: theme.COLORS.backgroundCard,
         borderRadius: theme.BORDERRADIUS.md,
         padding: theme.SPACING.md,
-        marginBottom: theme.SPACING.sm,
-        borderWidth: 1, // Added border
-        borderColor: theme.COLORS.border, // Added border color
+        marginBottom: theme.SPACING.md,
+        borderWidth: 1,
+        borderColor: theme.COLORS.border,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowRadius: 4,
+        elevation: 3,
+        position: 'relative',
+    },
+    deactivatedCard: {
+        backgroundColor: '#f0f0f0', // A slightly different background for deactivated users
+        opacity: 0.7,
     },
     userInfo: {
-        flex: 1,
-        marginRight: theme.SPACING.sm,
+        marginBottom: theme.SPACING.md,
     },
     nameAndRole: {
         flexDirection: 'row',
@@ -231,17 +298,17 @@ const styles = StyleSheet.create({
         marginBottom: theme.SPACING.xs,
     },
     userName: {
-        fontSize: theme.FONT_SIZES.lg, // Increased font size
+        fontSize: theme.FONT_SIZES.xl,
         fontWeight: 'bold',
         color: theme.COLORS.textDark,
         marginRight: theme.SPACING.sm,
     },
     userEmail: {
-        fontSize: theme.FONT_SIZES.sm, // Slightly reduced font size
+        fontSize: theme.FONT_SIZES.md,
         color: theme.COLORS.textMedium,
     },
     roleBadge: {
-        paddingHorizontal: theme.SPACING.xs,
+        paddingHorizontal: theme.SPACING.sm,
         paddingVertical: 2,
         borderRadius: theme.BORDERRADIUS.sm,
     },
@@ -250,36 +317,74 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: theme.COLORS.white,
     },
+    actionsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: theme.SPACING.md,
+        borderTopWidth: 1,
+        borderTopColor: theme.COLORS.border,
+        paddingTop: theme.SPACING.md,
+    },
     rolePickerContainer: {
-        borderWidth: 1,
+        flex: 1,
+        borderWidth: 0.3,
         borderColor: theme.COLORS.border,
         borderRadius: theme.BORDERRADIUS.sm,
         overflow: 'hidden',
-        minWidth: 120, // Increased width
-        backgroundColor: theme.COLORS.backgroundApp, // Subtle background
+        backgroundColor: theme.COLORS.backgroundApp,
+        marginRight: theme.SPACING.md,
+        justifyContent: 'center',
+        height: 40,
+
     },
     rolePicker: {
-        height: 40,
+        height: 70,
         width: '100%',
         color: theme.COLORS.textDark,
     },
-    activityIndicator: {
-        position: 'absolute',
-        right: theme.SPACING.xs,
-    },
-    actionsContainer: {
+    actionButtons: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.SPACING.sm,
+        marginLeft: theme.SPACING.md,
     },
-    deleteButton: {
-        backgroundColor: theme.COLORS.danger,
-        padding: theme.SPACING.xs,
+    switchContainer: {
+        alignItems: 'center',
+        marginHorizontal: theme.SPACING.md,
+    },
+    switchLabel: {
+        fontSize: theme.FONT_SIZES.xs,
+        color: theme.COLORS.textMedium,
+        marginTop: 2,
+    },
+    activateButton: {
+        backgroundColor: theme.COLORS.success,
+        padding: theme.SPACING.sm,
         borderRadius: theme.BORDERRADIUS.sm,
         justifyContent: 'center',
         alignItems: 'center',
-        height: 40,
-        width: 40,
+        flexDirection: 'row', // To align icon and text
+        gap: theme.SPACING.xs, // Space between icon and text
+    },
+    activateButtonText: {
+        color: theme.COLORS.white,
+        fontWeight: 'bold',
+        fontSize: theme.FONT_SIZES.sm,
+    },
+    deleteButton: {
+        backgroundColor: theme.COLORS.danger,
+        padding: theme.SPACING.sm,
+        borderRadius: theme.BORDERRADIUS.sm,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    updatingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: theme.BORDERRADIUS.md,
     },
     emptyStateContainer: {
         flex: 1,

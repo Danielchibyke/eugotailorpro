@@ -25,6 +25,11 @@ const userSchema = mongoose.Schema(
             type: String,
             required: false, // Not all users will have a push token
         },
+        isActive: {
+            type: Boolean,
+            default: true,
+            required: true,
+        },
         refreshTokens: {
             type: [String], // Array of strings to store multiple refresh tokens
             default: [],

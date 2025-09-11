@@ -11,10 +11,14 @@ export const setApiLogoutCallback = (callback) => {
 };
 
 let refreshTokenPromise = null;
+//for local dev server
+// http://172.20.10.3:5000/api
+
+//https://eugotailorpro.onrender.com/api  for production
 
 const getApi = () => {
     const api = axios.create({
-        baseURL: "https://eugotailorpro.onrender.com/api",
+        baseURL: "http://172.20.10.3:5000/api",
         timeout: 800000,
         headers: {
             'Content-Type': 'application/json',
