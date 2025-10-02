@@ -1,40 +1,25 @@
-Android Bundled 182ms index.ts (1 module)        
- WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
- WARN  This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22 Please use `getApps()` instead.
- LOG  Network is online. Processing offline queue...
- LOG  Network is online. Processing offline queue...
- LOG  Network is online. Processing offline queue...
- LOG  showDeactivatedAlert: false
- ERROR  Warning: Text strings must be rendered within a <Text> component.
-
-Call Stack
-  ScreenContentWrapper (<anonymous>)
-  RNSScreenStack (<anonymous>)
-  RNCSafeAreaProvider (<anonymous>)
-  AuthStack (<anonymous>)
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
- LOG  API Interceptor (401): No active refresh. Initiating refresh.
- ERROR  Error in login function: [AxiosError: Request failed with status code 401]
- LOG  Full error object: [AxiosError: Request failed with status code 401]
- LOG  Error response data: {"message": "Your account is deactivated. Please contact support.", "stack": "Error: Your account is deactivated. Please contact support.
-    at file:///C:/Users/POGBA/Documents/GitHub/eugotailorpro/server/controllers/authController.js:58:19"}
- LOG  Error response status: 401
- LOG  Error message (err.message): Request failed with status code 401
- LOG  Login Error Message: Login failed. Please check your credentials.
- LOG  showDeactivatedAlert: false
- LOG  showDeactivatedAlert: false
+Notification ticket received: [ { status: 'ok', id: '01997c25-f13e-70fc-ba59-148b2cc6b2c0' } ]
+send booking reminder job started
+Agenda job 'send booking reminder' picked up for booking: 68bc512a6e41281640aca51e
+Sending reminder for booking 68bc512a6e41281640aca51e to user daniel@gmail.com
+Sending push notification message: {
+  "to": "ExponentPushToken[jvbkGwMSdbEpZnRLItOiUx]",
+  "sound": "default",
+  "title": "Upcoming Delivery Reminder",       
+  "body": "Reminder: The booking for Kc is due for delivery on Thursday, October 2, 2025.",   
+  "data": {
+    "screen": "BookingDetail",
+    "id": "68bc512a6e41281640aca51e"
+  },
+  "categoryId": "reminder"
+}
+Full notification message object: {
+  to: 'ExponentPushToken[jvbkGwMSdbEpZnRLItOiUx]',
+  sound: 'default',
+  title: 'Upcoming Delivery Reminder',
+  body: 'Reminder: The booking for Kc is due for delivery on Thursday, October 2, 2025.',     
+  data: { screen: 'BookingDetail', id: '68bc512a6e41281640aca51e' },
+  categoryId: 'reminder'
+}
+Notification ticket received: [ { status: 'ok', id: '01997c26-4b1c-7c41-ac09-e1ecc497c377' } ]
+Reminder sent successfully for booking 68bc512a6e41281640aca51e

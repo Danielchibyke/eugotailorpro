@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { registerForPushNotificationsAsync } from '../utils/notificationService';
+import { getApi } from '../utils/api';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -23,6 +25,9 @@ import ViewMeasurementsScreen from '../screens/ViewMeasurementsScreen';
 import AddEditMeasurementScreen from '../screens/AddEditMeasurementScreen';
 import GalleryScreen from '../screens/GalleryScreen';
 import MeasurementTemplatesScreen from '../screens/MeasurementTemplatesScreen';
+import RemindersScreen from '../screens/RemindersScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+
 import ProtectedRoute from '../components/ProtectedRoute';
 
 import { COLORS } from '../styles/theme';
@@ -102,20 +107,15 @@ const MainStack = () => (
             <Stack.Screen name="MeasurementTemplates" component={MeasurementTemplatesScreen} />
             <Stack.Screen name="Gallery" component={GalleryScreen} />
             <Stack.Screen name="UserManagement" component={UserManagementScreen} />
+            <Stack.Screen name="Reminders" component={RemindersScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            
         </Stack.Navigator>
     </View>
 );
 
 const AppNavigator = () => {
     const { user, loading } = useAuth();
-
-    if (loading) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" />
-            </View>
-        );
-    }
 
     return (
         <NavigationContainer>

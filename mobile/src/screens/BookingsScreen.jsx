@@ -16,19 +16,36 @@ import BookingCard from '../components/BookingCard';
 import { useNotification } from '../context/NotificationContext';
 import { theme } from '../styles/theme';
 import { useBookings } from '../hooks/useBookings';
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
+import { useAuth } from '../context/AuthContext';
 
 
 
 
 const BookingsScreen = ({ navigation }) => {
+  const { user, refreshUser } = useAuth();
   const { bookings, loading, refresh, deleteBooking, updateBooking } = useBookings();
   const [searchQuery, setSearchQuery] = useState('');
   const { showNotification } = useNotification();
+  const permissions = useMemo(() => getUserEffectivePermissions(user), [user.customPermissions, user.role, user]);
+
+  const canViewBookings = permissions.includes(PERMISSIONS.BOOKINGS_VIEW);
+  const canCreateBookings = permissions.includes(PERMISSIONS.BOOKINGS_CREATE);
+  const canEditBookings = permissions.includes(PERMISSIONS.BOOKINGS_EDIT);
+  const canDeleteBookings = permissions.includes(PERMISSIONS.BOOKINGS_DELETE);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', refresh);
+    const unsubscribe = navigation.addListener('focus', () => {
+        refreshUser();
+    });
     return unsubscribe;
-  }, [navigation, refresh]);
+  }, [navigation, refreshUser]);
+
+  useEffect(() => {
+    if (canViewBookings) {
+        refresh();
+    }
+  }, [canViewBookings, refresh]);
 
   const filteredBookings = useMemo(() => {
     let sortedBookings = [...bookings].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -123,6 +140,17 @@ const BookingsScreen = ({ navigation }) => {
     </>
   );
 
+  if (!canViewBookings) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.emptyStateText}>Access Denied</Text>
+        <Text style={ styles.emptyStateSubText }>
+          You do not have permission to view bookings.
+        </Text>
+      </View>
+    );
+  }
+
   if (loading && bookings.length === 0) {
     return (
       <View style={styles.loadingContainer}>
@@ -150,12 +178,14 @@ const BookingsScreen = ({ navigation }) => {
         refreshing={loading}
         onRefresh={refresh}
       />
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('AddBooking')}
-      >
-        <Ionicons name="add" size={30} color={theme.COLORS.textLight} />
-      </TouchableOpacity>
+      {canCreateBookings && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('AddBooking')}
+        >
+          <Ionicons name="add" size={30} color={theme.COLORS.textLight} />
+        </TouchableOpacity>
+      )}
     </BackgroundContainer>
   );
 };

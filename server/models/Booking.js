@@ -16,9 +16,17 @@ const bookingSchema = mongoose.Schema(
         deliveryDate: {
             type: Date,
         },
-        reminderDate: {
-            type: Date,
-        },
+        reminderDates: [{
+            date: {
+                type: Date,
+                required: true
+            },
+            user: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                required: true
+            }
+        }],
         status: { // e.g., 'Pending', 'Confirmed', 'Completed', 'Cancelled'
             type: String,
             required: true,
@@ -46,10 +54,8 @@ const bookingSchema = mongoose.Schema(
             type: Number,
             default: 0,
         },
-        notificationSent: {
-            type: Boolean,
-            default: false,
-        }
+        
+        
     },
     {
         timestamps: true,

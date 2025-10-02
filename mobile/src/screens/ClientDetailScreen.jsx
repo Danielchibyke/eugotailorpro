@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -16,6 +16,8 @@ import BookingCard from '../components/BookingCard';
 import { useNotification } from '../context/NotificationContext';
 import { getApi } from '../utils/api';
 import { theme } from '../styles/theme';
+import { useAuth } from '../context/AuthContext';
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
 
 const ClientDetailScreen = ({ route, navigation }) => {
     const { clientId } = route.params;
@@ -23,29 +25,52 @@ const ClientDetailScreen = ({ route, navigation }) => {
     const [bookingsForClient, setBookingsForClient] = useState([]);
     const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
+    const { user, refreshUser } = useAuth();
+
+    const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+
+    const canViewBookings = permissions.includes(PERMISSIONS.BOOKINGS_VIEW);
+    const canEditClients = permissions.includes(PERMISSIONS.CLIENTS_EDIT);
+    const canViewMeasurements = permissions.includes(PERMISSIONS.MEASUREMENTS_VIEW);
+    const canEditMeasurements = permissions.includes(PERMISSIONS.MEASUREMENTS_EDIT);
+    const canViewClients = permissions.includes(PERMISSIONS.CLIENTS_VIEW);
 
     const fetchClientData = useCallback(async () => {
+        if (!canViewClients) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const [clientRes, bookingsRes] = await Promise.all([
-                getApi().get(`/clients/${clientId}`),
-                getApi().get(`/bookings?client=${clientId}`),
-            ]);
+            const promises = [getApi().get(`/clients/${clientId}`)];
+            if (canViewBookings) {
+                promises.push(getApi().get(`/bookings?client=${clientId}`));
+            }
+
+            const [clientRes, bookingsRes] = await Promise.all(promises);
 
             setClient(clientRes.data);
-            setBookingsForClient(bookingsRes.data);
+            if (bookingsRes) {
+                setBookingsForClient(bookingsRes.data);
+            }
         } catch (err) {
             console.error('Failed to fetch client data from API:', err);
             showNotification(err.response?.data?.msg || 'Failed to fetch client data.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [clientId, showNotification]);
+    }, [clientId, showNotification, canViewBookings, canViewClients]);
 
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', fetchClientData);
-        return unsubscribe;
-    }, [navigation, fetchClientData]);
+        if (canViewClients) {
+            fetchClientData();
+            const unsubscribe = navigation.addListener('focus', () => {
+                fetchClientData();
+                refreshUser(); // Refresh user permissions on focus
+            });
+            return unsubscribe;
+        }
+    }, [navigation, canViewClients, fetchClientData, refreshUser]);
 
     const renderDetailItem = (icon, label, value) => (
         <View style={styles.detailItem}>
@@ -61,6 +86,17 @@ const ClientDetailScreen = ({ route, navigation }) => {
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.COLORS.primary} />
                     <Text style={styles.loadingText}>Loading client details...</Text>
+                </View>
+            </BackgroundContainer>
+        );
+    }
+
+    if (!canViewClients) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.emptyStateText}>Access Denied</Text>
+                    <Text style={styles.emptyStateSubText}>You do not have permission to view this screen.</Text>
                 </View>
             </BackgroundContainer>
         );
@@ -84,13 +120,15 @@ const ClientDetailScreen = ({ route, navigation }) => {
                         <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
                     </View>
                     <Text style={styles.headerName}>{client.name}</Text>
-                    <TouchableOpacity
-                        style={styles.editButton}
-                        onPress={() => navigation.navigate('AddClient', { client: client })} // Remove .toJSON()
-                    >
-                        <Ionicons name="create-outline" size={20} color={theme.COLORS.textLight} />
-                        <Text style={styles.editButtonText}>Edit</Text>
-                    </TouchableOpacity>
+                    {canEditClients && (
+                        <TouchableOpacity
+                            style={styles.editButton}
+                            onPress={() => navigation.navigate('AddClient', { client: client })} // Remove .toJSON()
+                        >
+                            <Ionicons name="create-outline" size={20} color={theme.COLORS.textLight} />
+                            <Text style={styles.editButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <View style={styles.section}>
@@ -101,57 +139,62 @@ const ClientDetailScreen = ({ route, navigation }) => {
                     {client.notes && renderDetailItem('document-text-outline', 'Notes', client.notes)}
                 </View>
 
-                <TouchableOpacity
-                    style={styles.section}
-                    onPress={() => navigation.navigate('AddEditMeasurement', {
-                        measurements: client.measurements || {}, // Remove .toJSON()
-                        clientId: clientId,
-                    })}
-                >
-                    <View style={styles.measurementHeader}>
-                        <Text style={styles.sectionTitle}>Measurements</Text>
-                        <Ionicons name="chevron-forward-outline" size={24} color={theme.COLORS.primary} />
-                    </View>
-                    {client.measurements ? (
-                        <View style={styles.measurementsList}>
-                            {Object.entries(client.measurements).map(([key, value]) => {
-                                if (!value || (Array.isArray(value) && value.length === 0)) {
-                                    return null;
-                                }
-                                const formattedLabel = key.replace(/([A-Z])/g, ' $1').replace(/^./, function(str){ return str.toUpperCase(); });
-                                const formattedValue = Array.isArray(value) ? value.join(' - ') : value;
-                                return (
-                                    <View style={styles.measurementRow} key={key}>
-                                        <Text style={styles.measurementLabel}>{formattedLabel}</Text>
-                                        <Text style={styles.measurementValue}>{formattedValue}</Text>
-                                    </View>
-                                );
-                            })}
+                {canViewMeasurements && (
+                    <TouchableOpacity
+                        style={styles.section}
+                        onPress={() => canEditMeasurements && navigation.navigate('AddEditMeasurement', {
+                            measurements: client.measurements || {}, // Remove .toJSON()
+                            clientId: clientId,
+                        })}
+                        disabled={!canEditMeasurements}
+                    >
+                        <View style={styles.measurementHeader}>
+                            <Text style={styles.sectionTitle}>Measurements</Text>
+                            {canEditMeasurements && <Ionicons name="chevron-forward-outline" size={24} color={theme.COLORS.primary} />}
                         </View>
-                    ) : (
-                        <Text style={styles.noMeasurementsText}>No measurements recorded. Tap to add.</Text>
-                    )}
-                </TouchableOpacity>
+                        {client.measurements ? (
+                            <View style={styles.measurementsList}>
+                                {Object.entries(client.measurements).map(([key, value]) => {
+                                    if (!value || (Array.isArray(value) && value.length === 0)) {
+                                        return null;
+                                    }
+                                    const formattedLabel = key.replace(/([A-Z])/g, ' $1').replace(/^./, function(str){ return str.toUpperCase(); });
+                                    const formattedValue = Array.isArray(value) ? value.join(' - ') : value;
+                                    return (
+                                        <View style={styles.measurementRow} key={key}>
+                                            <Text style={styles.measurementLabel}>{formattedLabel}</Text>
+                                            <Text style={styles.measurementValue}>{formattedValue}</Text>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        ) : (
+                            <Text style={styles.noMeasurementsText}>No measurements recorded. Tap to add.</Text>
+                        )}
+                    </TouchableOpacity>
+                )}
 
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Booking History</Text>
-                    {bookingsForClient.length > 0 ? (
-                        <FlatList
-                            data={bookingsForClient}
-                            renderItem={({ item }) => (
-                                <BookingCard
-                                    booking={item}
-                                    onView={() => navigation.navigate('BookingDetail', { bookingId: item._id })} // Remove .toHexString()
-                                    // Pass other handlers if needed, or disable them
-                                />
-                            )}
-                            keyExtractor={(item) => item._id} // Remove .toHexString()
-                            scrollEnabled={false}
-                        />
-                    ) : (
-                        <Text style={styles.noBookingsText}>No bookings found for this client.</Text>
-                    )}
-                </View>
+                {canViewBookings && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Booking History</Text>
+                        {bookingsForClient.length > 0 ? (
+                            <FlatList
+                                data={bookingsForClient}
+                                renderItem={({ item }) => (
+                                    <BookingCard
+                                        booking={item}
+                                        onView={() => navigation.navigate('BookingDetail', { bookingId: item._id })} // Remove .toHexString()
+                                        // Pass other handlers if needed, or disable them
+                                    />
+                                )}
+                                keyExtractor={(item) => item._id} // Remove .toHexString()
+                                scrollEnabled={false}
+                            />
+                        ) : (
+                            <Text style={styles.noBookingsText}>No bookings found for this client.</Text>
+                        )}
+                    </View>
+                )}
             </ScrollView>
         </BackgroundContainer>
     );

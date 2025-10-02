@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Switch, Modal, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
@@ -8,16 +8,22 @@ import { theme } from '../styles/theme';
 import BackgroundContainer from '../components/BackgroundContainer';
 import { Picker } from '@react-native-picker/picker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { PERMISSIONS, ROLE_PERMISSIONS, getUserEffectivePermissions } from '../config/permissions.js';
 
 const UserManagementScreen = () => {
     const navigation = useNavigation();
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, setUser, refreshUser } = useAuth();
     const { showNotification } = useNotification();
     const api = useMemo(() => getApi(), []);
 
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [updatingUserId, setUpdatingUserId] = useState(null);
+    const [isPermissionsModalVisible, setIsPermissionsModalVisible] = useState(false);
+    const [editingUserPermissions, setEditingUserPermissions] = useState(null); // User whose permissions are being edited
+    const [selectedCustomPermissions, setSelectedCustomPermissions] = useState([]); // Custom permissions for the user being edited
+
+    const canManageUsers = useMemo(() => getUserEffectivePermissions(currentUser).includes(PERMISSIONS.USERS_MANAGE), [currentUser]);
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
@@ -33,8 +39,17 @@ const UserManagementScreen = () => {
     }, [api, showNotification]);
 
     useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
+        const unsubscribe = navigation.addListener('focus', () => {
+            refreshUser();
+        });
+        return unsubscribe;
+    }, [navigation, refreshUser]);
+
+    useEffect(() => {
+        if (canManageUsers) {
+            fetchUsers();
+        }
+    }, [canManageUsers, fetchUsers]);
 
     const handleRoleChange = useCallback(async (userId, newRole) => {
         setUpdatingUserId(userId);
@@ -131,73 +146,150 @@ const UserManagementScreen = () => {
         );
     }, [api, showNotification, fetchUsers, currentUser, users]);
 
-    const renderUserItem = ({ item }) => (
-        <View style={[styles.userCard, !item.isActive && styles.deactivatedCard]}>
-            <View style={styles.userInfo}>
-                <View style={styles.nameAndRole}>
-                    <Text style={styles.userName}>{item.name}</Text>
-                    <View style={[styles.roleBadge, getRoleBadgeStyle(item.role)]}>
-                        <Text style={styles.roleBadgeText}>{item.role.toUpperCase()}</Text>
-                    </View>
-                </View>
-                <Text style={styles.userEmail}>{item.email}</Text>
-            </View>
-            <View style={styles.actionsContainer}>
-                <View style={styles.rolePickerContainer}>
-                    <Picker
-                        selectedValue={item.role}
-                        onValueChange={(itemValue) => handleRoleChange(item._id, itemValue)}
-                        style={styles.rolePicker}
-                        enabled={currentUser?.role === 'admin' && item._id !== currentUser._id && item.isActive} // Disabled if deactivated
-                    >
-                        <Picker.Item label="Admin" value="admin" />
-                        <Picker.Item label="Staff" value="staff" />
-                        <Picker.Item label="User" value="user" />
-                    </Picker>
-                </View>
-                <View style={styles.actionButtons}>
-                    {item.isActive ? ( // Show switch if active
-                        <View style={styles.switchContainer}>
-                            <Switch
-                                trackColor={{ false: '#767577', true: theme.COLORS.primary }}
-                                thumbColor={item.isActive ? theme.COLORS.white : '#f4f3f4'}
-                                ios_backgroundColor="#3e3e3e"
-                                onValueChange={() => handleToggleActive(item._id, item.isActive)}
-                                value={item.isActive}
-                                disabled={updatingUserId === item._id || item._id === currentUser._id}
-                            />
-                            <Text style={styles.switchLabel}>{item.isActive ? 'Active' : 'Inactive'}</Text>
+    const handleEditPermissions = useCallback((user) => {
+        setEditingUserPermissions(user);
+        setSelectedCustomPermissions(user.customPermissions || []);
+        setIsPermissionsModalVisible(true);
+    }, []);
+
+    const handleTogglePermission = useCallback((permission) => {
+        setSelectedCustomPermissions(prev =>
+            prev.includes(permission)
+                ? prev.filter(p => p !== permission)
+                : [...prev, permission]
+        );
+    }, []);
+
+    const handleUpdateCustomPermissions = useCallback(async () => {
+        if (!editingUserPermissions) return;
+
+        setUpdatingUserId(editingUserPermissions._id);
+        try {
+            await api.put(`/auth/users/${editingUserPermissions._id}/custom-permissions`, {
+                customPermissions: selectedCustomPermissions,
+            });
+            showNotification('User custom permissions updated successfully!', 'success');
+            // Update the user in AuthContext if the current user's permissions were changed
+            if (editingUserPermissions._id === currentUser._id) {
+                await refreshUser();
+            }
+            fetchUsers(); // Re-fetch users to update the UI
+            setIsPermissionsModalVisible(false);
+        } catch (error) {
+            console.error('Failed to update user custom permissions:', error);
+            showNotification(error.response?.data?.msg || 'Failed to update user custom permissions.', 'error');
+        } finally {
+            setUpdatingUserId(null);
+        }
+    }, [api, showNotification, fetchUsers, editingUserPermissions, selectedCustomPermissions, currentUser, refreshUser]);
+
+    const renderUserItem = ({ item }) => {
+        const effectivePermissions = getUserEffectivePermissions(item);
+
+        return (
+            <View style={[styles.userCard, !item.isActive && styles.deactivatedCard]}>
+                <View style={styles.userInfo}>
+                    <View style={styles.nameAndRole}>
+                        <Text style={styles.userName}>{item.name}</Text>
+                        <View style={[styles.roleBadge, getRoleBadgeStyle(item.role)]}>
+                            <Text style={styles.roleBadgeText}>{item.role.toUpperCase()}</Text>
                         </View>
-                    ) : ( // Show activate button if deactivated
-                        currentUser?.role === 'admin' && item._id !== currentUser._id && (
+                    </View>
+                    <Text style={styles.userEmail}>{item.email}</Text>
+                    <View style={styles.permissionsContainer}>
+                        <Text style={styles.permissionsTitle}>Effective Permissions:</Text>
+                        <View style={styles.permissionsList}>
+                            {effectivePermissions.length > 0 ? (
+                                effectivePermissions.map(permission => (
+                                    <View key={permission} style={styles.permissionTag}>
+                                        <Text style={styles.permissionText}>{permission}</Text>
+                                    </View>
+                                ))
+                            ) : (
+                                <Text style={styles.emptyPermissionsText}>No effective permissions.</Text>
+                            )}
+                        </View>
+                        {item.customPermissions && item.customPermissions.length > 0 && (
+                            <View style={styles.customPermissionsSection}>
+                                <Text style={styles.customPermissionsTitle}>Custom Permissions:</Text>
+                                <View style={styles.permissionsList}>
+                                    {item.customPermissions.map(permission => (
+                                        <View key={permission} style={[styles.permissionTag, styles.customPermissionTag]}>
+                                            <Text style={styles.permissionText}>{permission}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+                        {currentUser?.role === 'admin' && item._id !== currentUser._id && (
                             <TouchableOpacity
-                                style={styles.activateButton}
-                                onPress={() => handleToggleActive(item._id, item.isActive, true)} // Force activate
+                                style={styles.editPermissionsButton}
+                                onPress={() => handleEditPermissions(item)}
                                 disabled={updatingUserId === item._id}
                             >
-                                <Ionicons name="checkmark-circle-outline" size={20} color={theme.COLORS.white} />
-                                <Text style={styles.activateButtonText}>Activate</Text>
+                                <Ionicons name="build-outline" size={18} color={theme.COLORS.primary} />
+                                <Text style={styles.editPermissionsButtonText}>Edit Custom Permissions</Text>
                             </TouchableOpacity>
-                        )
-                    )}
-                    {currentUser?.role === 'admin' && item._id !== currentUser._id && (
-                        <TouchableOpacity
-                            style={styles.deleteButton}
-                            onPress={() => handleDeleteUser(item._id, item.role)}
-                            disabled={updatingUserId === item._id}
+                        )}
+                    </View>
+                </View>
+                <View style={styles.actionsContainer}>
+                    <View style={styles.rolePickerContainer}>
+                        <Picker
+                            selectedValue={item.role}
+                            onValueChange={(itemValue) => handleRoleChange(item._id, itemValue)}
+                            style={styles.rolePicker}
+                            enabled={currentUser?.role === 'admin' && item._id !== currentUser._id && item.isActive} // Disabled if deactivated
                         >
-                            <Ionicons name="trash-outline" size={20} color={theme.COLORS.white} />
-                        </TouchableOpacity>
-                    )}
+                            <Picker.Item label="Admin" value="admin" />
+                            <Picker.Item label="Staff" value="staff" />
+                            <Picker.Item label="User" value="user" />
+                        </Picker>
+                    </View>
+                    <View style={styles.actionButtons}>
+                        {item.isActive ? ( // Show switch if active
+                            <View style={styles.switchContainer}>
+                                <Switch
+                                    trackColor={{ false: '#767577', true: theme.COLORS.primary }}
+                                    thumbColor={item.isActive ? theme.COLORS.white : '#f4f3f4'}
+                                    ios_backgroundColor="#3e3e3e"
+                                    onValueChange={() => handleToggleActive(item._id, item.isActive)}
+                                    value={item.isActive}
+                                    disabled={updatingUserId === item._id || item._id === currentUser._id}
+                                />
+                                <Text style={styles.switchLabel}>{item.isActive ? 'Active' : 'Inactive'}</Text>
+                            </View>
+                        ) : ( // Show activate button if deactivated
+                            currentUser?.role === 'admin' && item._id !== currentUser._id && (
+                                <TouchableOpacity
+                                    style={styles.activateButton}
+                                    onPress={() => handleToggleActive(item._id, item.isActive, true)} // Force activate
+                                    disabled={updatingUserId === item._id}
+                                >
+                                    <Ionicons name="checkmark-circle-outline" size={20} color={theme.COLORS.white} />
+                                    <Text style={styles.activateButtonText}>Activate</Text>
+                                </TouchableOpacity>
+                            )
+                        )}
+                        {currentUser?.role === 'admin' && item._id !== currentUser._id && (
+                            <TouchableOpacity
+                                style={styles.deleteButton}
+                                onPress={() => handleDeleteUser(item._id, item.role)}
+                                disabled={updatingUserId === item._id}
+                            >
+                                <Ionicons name="trash-outline" size={20} color={theme.COLORS.white} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
+                {updatingUserId === item._id && (
+                    <View style={styles.updatingOverlay}>
+                        <ActivityIndicator size="large" color={theme.COLORS.primary} />
+                    </View>
+                )}
             </View>
-            {updatingUserId === item._id && (
-                <View style={styles.updatingOverlay}>
-                    <ActivityIndicator size="large" color={theme.COLORS.primary} />
-                </View>
-            )}
-        </View>
-    );
+        );
+    };
 
     const getRoleBadgeStyle = (role) => {
         switch (role) {
@@ -214,6 +306,17 @@ const UserManagementScreen = () => {
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.COLORS.primary} />
                     <Text style={styles.loadingText}>Loading users...</Text>
+                </View>
+            </BackgroundContainer>
+        );
+    };
+
+    if (!canManageUsers) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.emptyStateText}>Access Denied</Text>
+                    <Text style={styles.emptyStateSubText}>You do not have permission to manage users.</Text>
                 </View>
             </BackgroundContainer>
         );
@@ -239,6 +342,44 @@ const UserManagementScreen = () => {
                     </View>
                 }
             />
+
+            {/* Permissions Management Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isPermissionsModalVisible}
+                onRequestClose={() => setIsPermissionsModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>Edit Custom Permissions for {editingUserPermissions?.name}</Text>
+                        <ScrollView style={styles.permissionsScrollContainer}>
+                            {Object.values(PERMISSIONS).map(permission => (
+                                <TouchableOpacity
+                                    key={permission}
+                                    style={styles.permissionCheckboxContainer}
+                                    onPress={() => handleTogglePermission(permission)}
+                                >
+                                    <Ionicons
+                                        name={selectedCustomPermissions.includes(permission) ? "checkbox-outline" : "square-outline"}
+                                        size={24}
+                                        color={selectedCustomPermissions.includes(permission) ? theme.COLORS.primary : theme.COLORS.textMedium}
+                                    />
+                                    <Text style={styles.permissionCheckboxText}>{permission}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={[styles.modalButton, styles.modalCancelButton]} onPress={() => setIsPermissionsModalVisible(false)}>
+                                <Text style={styles.modalButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.modalButton, styles.modalSaveButton]} onPress={handleUpdateCustomPermissions}>
+                                <Text style={styles.modalButtonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </BackgroundContainer>
     );
 };
@@ -395,6 +536,131 @@ const styles = StyleSheet.create({
     emptyStateText: {
         fontSize: theme.FONT_SIZES.lg,
         color: theme.COLORS.textMedium,
+    },
+    permissionsContainer: {
+        marginTop: theme.SPACING.md,
+        borderTopWidth: 1,
+        borderTopColor: theme.COLORS.border,
+        paddingTop: theme.SPACING.md,
+    },
+    permissionsTitle: {
+        fontSize: theme.FONT_SIZES.md,
+        fontWeight: 'bold',
+        color: theme.COLORS.textDark,
+        marginBottom: theme.SPACING.sm,
+    },
+    permissionsList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: theme.SPACING.xs,
+    },
+    permissionTag: {
+        backgroundColor: theme.COLORS.lightPrimary,
+        borderRadius: theme.BORDERRADIUS.sm,
+        paddingHorizontal: theme.SPACING.sm,
+        paddingVertical: 4,
+    },
+    permissionText: {
+        fontSize: theme.FONT_SIZES.sm,
+        color: theme.COLORS.primary,
+    },
+    emptyPermissionsText: {
+        fontSize: theme.FONT_SIZES.sm,
+        color: theme.COLORS.textMedium,
+        fontStyle: 'italic',
+    },
+    customPermissionsSection: {
+        marginTop: theme.SPACING.md,
+        paddingTop: theme.SPACING.sm,
+        borderTopWidth: 1,
+        borderTopColor: theme.COLORS.borderLight,
+    },
+    customPermissionsTitle: {
+        fontSize: theme.FONT_SIZES.md,
+        fontWeight: 'bold',
+        color: theme.COLORS.textDark,
+        marginBottom: theme.SPACING.sm,
+    },
+    editPermissionsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.COLORS.lightPrimary,
+        paddingVertical: theme.SPACING.sm,
+        paddingHorizontal: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginTop: theme.SPACING.md,
+        gap: theme.SPACING.xs,
+    },
+    editPermissionsButtonText: {
+        color: theme.COLORS.primary,
+        fontWeight: 'bold',
+        fontSize: theme.FONT_SIZES.sm,
+    },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContainer: {
+        width: '90%',
+        backgroundColor: theme.COLORS.backgroundCard,
+        borderRadius: theme.BORDERRADIUS.lg,
+        padding: theme.SPACING.lg,
+        maxHeight: '80%',
+    },
+    modalTitle: {
+        fontSize: theme.FONT_SIZES.h3,
+        fontWeight: 'bold',
+        color: theme.COLORS.primary,
+        marginBottom: theme.SPACING.md,
+        textAlign: 'center',
+    },
+    permissionsScrollContainer: {
+        maxHeight: 300,
+        marginBottom: theme.SPACING.md,
+    },
+    permissionCheckboxContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: theme.SPACING.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.COLORS.borderLight,
+    },
+    permissionCheckboxText: {
+        marginLeft: theme.SPACING.sm,
+        fontSize: theme.FONT_SIZES.md,
+        color: theme.COLORS.textDark,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginTop: theme.SPACING.md,
+    },
+    modalButton: {
+        paddingVertical: theme.SPACING.sm,
+        paddingHorizontal: theme.SPACING.lg,
+        borderRadius: theme.BORDERRADIUS.sm,
+        alignItems: 'center',
+        flex: 1,
+        marginHorizontal: theme.SPACING.xs,
+    },
+    modalCancelButton: {
+        backgroundColor: theme.COLORS.textMedium,
+    },
+    modalSaveButton: {
+        backgroundColor: theme.COLORS.primary,
+    },
+    modalButtonText: {
+        color: theme.COLORS.white,
+        fontWeight: 'bold',
+    },
+    emptyStateSubText: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textMedium,
+        marginTop: theme.SPACING.xs,
+        textAlign: 'center',
     },
 });
 

@@ -1,6 +1,7 @@
-import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { theme } from '../styles/theme';
+import { getApi } from '../utils/api'; // Import getApi
 
 const { height } = Dimensions.get('window');
 
@@ -8,74 +9,45 @@ const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
     const [notification, setNotification] = useState(null);
-    const fadeAnim = useRef(new Animated.Value(0)).current; // Initial value for opacity: 0
-    const slideAnim = useRef(new Animated.Value(-height)).current; // Initial value for slide: off-screen top
+    const [unreadCount, setUnreadCount] = useState(0); // New state for unread count
+
+    const api = getApi(); // Get the API instance
+
+    const fetchUnreadCount = useCallback(async () => {
+        try {
+            const { data } = await api.get('/notifications');
+            const count = data.filter(n => !n.read).length;
+            setUnreadCount(count);
+        } catch (error) {
+            console.error('Failed to fetch unread notifications count:', error);
+        }
+    }, [api]);
 
     const showNotification = useCallback((message, type = 'success') => {
         setNotification({ message, type });
-        // Reset animation values before starting
-        fadeAnim.setValue(0);
-        slideAnim.setValue(-height);
 
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-                toValue: 0, // Slide to top of screen
-                duration: 300,
-                useNativeDriver: true,
-            }),
-        ]).start(() => {
-            setTimeout(() => {
-                Animated.parallel([
-                    Animated.timing(fadeAnim, {
-                        toValue: 0,
-                        duration: 300,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(slideAnim, {
-                        toValue: -height, // Slide back off-screen top
-                        duration: 300,
-                        useNativeDriver: true,
-                    }),
-                ]).start(() => {
-                    setNotification(null);
-                });
-            }, 3000); // Notification visible for 3 seconds
-        });
-    }, [fadeAnim, slideAnim]);
+        setTimeout(() => {
+            setNotification(null);
+        }, 5000); // Notification visible for 5 seconds
+    }, []);
 
     // Clear notification when component unmounts or notification changes unexpectedly
     useEffect(() => {
         return () => {
-            fadeAnim.setValue(0);
-            slideAnim.setValue(-height);
             if (notification) {
                 setNotification(null);
             }
         };
-    }, [notification, fadeAnim, slideAnim]);
+    }, [notification]);
+
+    // Fetch unread count on initial load
+    useEffect(() => {
+        fetchUnreadCount();
+    }, [fetchUnreadCount]);
 
     return (
-        <NotificationContext.Provider value={{ showNotification }}>
+        <NotificationContext.Provider value={{ notification, showNotification, unreadCount, fetchUnreadCount }}>
             {children}
-            {notification && (
-                <Animated.View
-                    style={[
-                        styles.notification,
-                        {
-                            backgroundColor: notification.type === 'success' ? theme.COLORS.success : theme.COLORS.error,
-                            opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }],
-                        },
-                    ]}
-                >
-                    <Text style={styles.notificationText}>{notification.message}</Text>
-                </Animated.View>
-            )}
         </NotificationContext.Provider>
     );
 };
@@ -85,11 +57,10 @@ export const useNotification = () => useContext(NotificationContext);
 const styles = StyleSheet.create({
     notification: {
         position: 'absolute',
-        top: 0,
         left: 0,
         right: 0,
         padding: theme.SPACING.md,
-        paddingTop: theme.SPACING.xxl,
+        height: 80, // Fixed height
         borderRadius: theme.BORDERRADIUS.sm,
         zIndex: 1000,
         alignItems: 'center',

@@ -7,16 +7,22 @@ import clientRoutes from './routes/clientRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';    
 import financialRoutes from './routes/financialRoutes.js'; 
 import balanceRoutes from './routes/balanceRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 
+
 import designRoutes from './routes/designRoutes.js';
-import startReminderScheduler from './utils/reminderScheduler.js'; 
+import { startAgenda } from './utils/agenda.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
-
 dotenv.config();
-connectDB();
-startReminderScheduler();
+
+const startServer = async () => {
+    await connectDB();
+    await startAgenda(process.env.MONGO_URI);
+};
+
+startServer();
 
 
 const app = express();
@@ -50,8 +56,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);         // Use client routes
 app.use('/api/bookings', bookingRoutes);       // Use booking routes
 app.use('/api/transactions', financialRoutes); // Use financial routes
-app.use('/api/balances', balanceRoutes); // Use balance routes
+app.use('/api/balances', balanceRoutes);
+app.use('/api/notifications', notificationRoutes); // Use balance routes
 app.use('/api/upload', uploadRoutes); // Use upload routes
+
 
 app.use('/api/designs', designRoutes); // Use design routes
 

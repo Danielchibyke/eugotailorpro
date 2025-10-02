@@ -7,6 +7,7 @@ import {
     TextInput,
     SafeAreaView,
     Alert,
+    Switch,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../styles/theme';
@@ -20,6 +21,7 @@ const EditProfileScreen = ({ navigation }) => {
     const [email, setEmail] = useState(user?.email || '');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [receiveReminders, setReceiveReminders] = useState(user?.receiveReminders ?? true);
     const [loading, setLoading] = useState(false);
     const { showNotification } = useNotification();
 
@@ -31,22 +33,19 @@ const EditProfileScreen = ({ navigation }) => {
 
         setLoading(true);
         try {
-            // Update user in Realm via AuthContext
             const updatedUserData = {
-                _id: user._id.toHexString(), // Pass ID as string
-                name: name,
-                email: email,
-                expoPushToken: user.expoPushToken, // Keep existing token
+                name,
+                email,
+                receiveReminders,
             };
-            updateRealmUser(updatedUserData);
 
-            // Handle password change separately, as it requires direct API interaction
             if (password) {
-                await getApi().put(`/auth/profile`, { password });
-                showNotification('Password updated successfully.', 'success');
+                updatedUserData.password = password;
             }
 
-            showNotification('Profile updated locally. Syncing when online...', 'success');
+            await getApi().put('/auth/profile', updatedUserData);
+
+            showNotification('Profile updated successfully!', 'success');
             navigation.goBack();
         } catch (error) {
             console.error('Failed to update profile:', error);
@@ -93,6 +92,16 @@ const EditProfileScreen = ({ navigation }) => {
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                 />
+                <View style={styles.switchContainer}>
+                    <Text style={styles.switchLabel}>Receive Reminders</Text>
+                    <Switch
+                        trackColor={{ false: theme.COLORS.border, true: theme.COLORS.primary }}
+                        thumbColor={theme.COLORS.white}
+                        ios_backgroundColor={theme.COLORS.border}
+                        onValueChange={setReceiveReminders}
+                        value={receiveReminders}
+                    />
+                </View>
                 <TouchableOpacity
                     style={styles.saveButton}
                     onPress={handleUpdate}
@@ -147,6 +156,19 @@ const styles = StyleSheet.create({
         color: theme.COLORS.white,
         fontWeight: 'bold',
         fontSize: theme.FONT_SIZES.md,
+    },
+    switchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: theme.COLORS.backgroundCard,
+        padding: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginBottom: theme.SPACING.lg,
+    },
+    switchLabel: {
+        fontSize: theme.FONT_SIZES.md,
+        color: theme.COLORS.textDark,
     },
 });
 

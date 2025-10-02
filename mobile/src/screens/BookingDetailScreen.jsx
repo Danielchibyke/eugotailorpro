@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback,useMemo } from 'react';
 import {
     View,
     Text,
@@ -16,11 +16,13 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import { useNotification } from '../context/NotificationContext';
 import { theme } from '../styles/theme';
 import { bookingRepository } from '../data/bookingRepository'; // Import the repository
-
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
 import ImageZoomModal from '../components/ImageZoomModal';
+import { useAuth } from '../context/AuthContext';
 
 const BookingDetailScreen = ({ route, navigation }) => {
-    const { bookingId } = route.params;
+    const { id: bookingId } = route.params;
+    const { user, refreshUser } = useAuth();
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
@@ -30,6 +32,8 @@ const BookingDetailScreen = ({ route, navigation }) => {
         setZoomedImage(imageUrl);
         setIsZoomModalVisible(true);
     };
+    const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+    const canEditBookings = permissions.includes(PERMISSIONS.BOOKINGS_EDIT);
     const closeZoomModal = () => setIsZoomModalVisible(false);
 
     const fetchBookingDetails = useCallback(async () => {
@@ -45,9 +49,12 @@ const BookingDetailScreen = ({ route, navigation }) => {
     }, [bookingId, showNotification]);
 
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', fetchBookingDetails);
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchBookingDetails();
+            refreshUser(); // Refresh user permissions on focus
+        });
         return unsubscribe;
-    }, [navigation, fetchBookingDetails]);
+    }, [navigation, fetchBookingDetails, refreshUser]);
 
 
     const handleCompleteBooking = async () => {
@@ -218,7 +225,7 @@ const BookingDetailScreen = ({ route, navigation }) => {
                     </View>
                 </View>
 
-                {status !== 'Completed' && (
+                {status !== 'Completed' && canEditBookings && (
                     <TouchableOpacity style={styles.completeButton} onPress={handleCompleteBooking}>
                         <Ionicons name="checkmark-circle-outline" size={24} color={theme.COLORS.textLight} />
                         <Text style={styles.completeButtonText}>Mark as Completed</Text>
@@ -259,7 +266,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: theme.FONT_SIZES.h2,
         fontWeight: 'bold',
-        color: theme.COLORS.primary,
+        color: theme.COLORS.textLight,
     },
     editButton: {
         flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -7,6 +7,7 @@ import {
     StyleSheet,
     ScrollView,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -14,68 +15,52 @@ import BackgroundContainer from '../components/BackgroundContainer';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
-import { getApi } from '../utils/api'; // Add API import
+import { getApi } from '../utils/api';
 import { theme } from '../styles/theme';
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
 
-// Helper component for measurement inputs
-const MeasurementInput = ({ label, value, onChange, keyboardType = 'numeric' }) => {
-    const isArray = Array.isArray(value);
-    return (
-        <View style={styles.measurementRow}>
-            <Text style={styles.measurementLabel}>{label}</Text>
-            <View style={styles.measurementInputContainer}>
-                {isArray ? (
-                    value.map((item, index) => (
-                        <TextInput
-                            key={index}
-                            style={[styles.measurementInput, styles.inputArrayItem]}
-                            value={String(item || '')}
-                            onChangeText={(text) => onChange(text, index)}
-                            keyboardType={keyboardType}
-                            placeholder="0"
-                            placeholderTextColor={theme.COLORS.textMedium}
-                        />
-                    ))
-                ) : (
-                    <TextInput
-                        style={styles.measurementInput}
-                        value={String(value || '')}
-                        onChangeText={(text) => onChange(text)}
-                        keyboardType={keyboardType}
-                        placeholder="0"
-                        placeholderTextColor={theme.COLORS.textMedium}
-                    />
-                )}
-            </View>
-        </View>
-    );
-};
+import MeasurementForm from '../components/MeasurementForm';
 
 const AddClientScreen = ({ navigation, route }) => {
     const { client } = route.params || {};
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         phone: '',
         address: '',
         notes: '',
-        measurement: {
-            chest: [0, 0],
-            waist: 0,
-            roundsleeve: [0, 0, 0],
-            shoulder: 0,
-            toplength: 0,
-            trouserlength: 0,
-            thigh: 0,
-            knee: 0,
-            ankle: 0,
-            neck: 0,
-            sleeveLength: [0, 0, 0],
-        }
     });
-    const [loading, setLoading] = useState(false);
+    const [measurements, setMeasurements] = useState({
+        chest: [],
+        waist: 0,
+        roundsleeve: [],
+        shoulder: 0,
+        toplength: 0,
+        trouserlength: 0,
+        thigh: 0,
+        knee: 0,
+        ankle: 0,
+        neck: 0,
+        sleeveLength: [],
+    });
+    const [loading, setLoading] = useState(true);
     const { showNotification } = useNotification();
+
+    const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+    const canCreateClients = permissions.includes(PERMISSIONS.CLIENTS_CREATE);
+    const canEditClients = permissions.includes(PERMISSIONS.CLIENTS_EDIT);
+    const canDeleteClients = permissions.includes(PERMISSIONS.CLIENTS_DELETE);
+
+    const isEditing = !!client;
+    const hasPermission = isEditing ? canEditClients : canCreateClients;
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            refreshUser();
+        });
+        return unsubscribe;
+    }, [navigation, refreshUser]);
 
     useEffect(() => {
         if (client) {
@@ -85,37 +70,26 @@ const AddClientScreen = ({ navigation, route }) => {
                 phone: client.phone || '',
                 address: client.address || '',
                 notes: client.notes || '',
-                measurement: client.measurement || {
-                    chest: [0, 0],
-                    waist: 0,
-                    roundsleeve: [0, 0, 0],
-                    shoulder: 0,
-                    toplength: 0,
-                    trouserlength: 0,
-                    thigh: 0,
-                    knee: 0,
-                    ankle: 0,
-                    neck: 0,
-                    sleeveLength: [0, 0, 0],
-                }
+            });
+            setMeasurements(client.measurements || {
+                chest: [],
+                waist: 0,
+                roundsleeve: [],
+                shoulder: 0,
+                toplength: 0,
+                trouserlength: 0,
+                thigh: 0,
+                knee: 0,
+                ankle: 0,
+                neck: 0,
+                sleeveLength: [],
             });
         }
+        setLoading(false);
     }, [client]);
 
     const handleInputChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
-    };
-
-    const handleMeasurementChange = (field, value, index = null) => {
-        setFormData(prev => ({
-            ...prev,
-            measurement: {
-                ...prev.measurement,
-                [field]: index !== null 
-                    ? prev.measurement[field].map((item, i) => i === index ? parseFloat(value) || 0 : item)
-                    : parseFloat(value) || 0
-            }
-        }));
     };
 
     const handleSaveClient = async () => {
@@ -126,17 +100,12 @@ const AddClientScreen = ({ navigation, route }) => {
 
         setLoading(true);
         try {
-            const payload = {
-                ...formData,
-                createdBy: user._id
-            };
+            const payload = { ...formData, measurements: measurements, createdBy: user._id };
 
             if (client) {
-                // Update existing client
                 await getApi().put(`/clients/${client._id}`, payload);
                 showNotification('Client updated successfully!', 'success');
             } else {
-                // Create new client
                 await getApi().post('/clients', payload);
                 showNotification('Client added successfully!', 'success');
             }
@@ -173,6 +142,27 @@ const AddClientScreen = ({ navigation, route }) => {
             ]
         );
     };
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.COLORS.primary} />
+            </View>
+        );
+    }
+
+    if (!hasPermission) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.centeredMessageContainer}>
+                    <Text style={styles.emptyStateText}>Access Denied</Text>
+                    <Text style={styles.emptyStateSubText}>
+                        You do not have permission to {isEditing ? 'edit' : 'create'} clients.
+                    </Text>
+                </View>
+            </BackgroundContainer>
+        );
+    }
 
     return (
         <BackgroundContainer>
@@ -221,60 +211,9 @@ const AddClientScreen = ({ navigation, route }) => {
                 </View>
 
                 <CollapsibleSection title="Measurements">
-                    <MeasurementInput 
-                        label="Neck" 
-                        value={formData.measurement.neck} 
-                        onChange={(v) => handleMeasurementChange('neck', v)} 
-                    />
-                    <MeasurementInput 
-                        label="Shoulder" 
-                        value={formData.measurement.shoulder} 
-                        onChange={(v) => handleMeasurementChange('shoulder', v)} 
-                    />
-                    <MeasurementInput 
-                        label="Chest" 
-                        value={formData.measurement.chest} 
-                        onChange={(v, i) => handleMeasurementChange('chest', v, i)} 
-                    />
-                    <MeasurementInput 
-                        label="Sleeve Length" 
-                        value={formData.measurement.sleeveLength} 
-                        onChange={(v, i) => handleMeasurementChange('sleeveLength', v, i)} 
-                    />
-                    <MeasurementInput 
-                        label="Round Sleeve" 
-                        value={formData.measurement.roundsleeve} 
-                        onChange={(v, i) => handleMeasurementChange('roundsleeve', v, i)} 
-                    />
-                    <MeasurementInput 
-                        label="Top Length" 
-                        value={formData.measurement.toplength} 
-                        onChange={(v) => handleMeasurementChange('toplength', v)} 
-                    />
-                    <MeasurementInput 
-                        label="Waist" 
-                        value={formData.measurement.waist} 
-                        onChange={(v) => handleMeasurementChange('waist', v)} 
-                    />
-                    <MeasurementInput 
-                        label="Thigh" 
-                        value={formData.measurement.thigh} 
-                        onChange={(v) => handleMeasurementChange('thigh', v)} 
-                    />
-                    <MeasurementInput 
-                        label="Knee" 
-                        value={formData.measurement.knee} 
-                        onChange={(v) => handleMeasurementChange('knee', v)} 
-                    />
-                    <MeasurementInput 
-                        label="Ankle" 
-                        value={formData.measurement.ankle} 
-                        onChange={(v) => handleMeasurementChange('ankle', v)} 
-                    />
-                    <MeasurementInput 
-                        label="Trouser Length" 
-                        value={formData.measurement.trouserlength} 
-                        onChange={(v) => handleMeasurementChange('trouserlength', v)} 
+                    <MeasurementForm
+                        initialMeasurements={measurements}
+                        onMeasurementsChange={setMeasurements}
                     />
                 </CollapsibleSection>
 
@@ -290,10 +229,10 @@ const AddClientScreen = ({ navigation, route }) => {
                     />
                 </View>
 
-                <TouchableOpacity 
-                    style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+                <TouchableOpacity
+                    style={[styles.saveButton, (!hasPermission || loading) && styles.saveButtonDisabled]}
                     onPress={handleSaveClient}
-                    disabled={loading}
+                    disabled={!hasPermission || loading}
                 >
                     <Ionicons name="save-outline" size={24} color={theme.COLORS.textLight} />
                     <Text style={styles.saveButtonText}>
@@ -301,9 +240,9 @@ const AddClientScreen = ({ navigation, route }) => {
                     </Text>
                 </TouchableOpacity>
 
-                {client && (
-                    <TouchableOpacity 
-                        style={[styles.deleteButton, loading && styles.deleteButtonDisabled]} 
+                {client && canDeleteClients && (
+                    <TouchableOpacity
+                        style={[styles.deleteButton, loading && styles.deleteButtonDisabled]}
                         onPress={handleDeleteClient}
                         disabled={loading}
                     >
@@ -320,6 +259,30 @@ const styles = StyleSheet.create({
     content: {
         padding: theme.SPACING.md,
         paddingBottom: 40,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: theme.COLORS.backgroundApp,
+    },
+    centeredMessageContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: theme.SPACING.lg,
+    },
+    emptyStateText: {
+        fontSize: theme.FONT_SIZES.lg,
+        fontWeight: 'bold',
+        color: theme.COLORS.textMedium,
+        textAlign: 'center',
+    },
+    emptyStateSubText: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textMedium,
+        marginTop: theme.SPACING.xs,
+        textAlign: 'center',
     },
     headerTitle: {
         fontSize: theme.FONT_SIZES.h2,

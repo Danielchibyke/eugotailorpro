@@ -8,23 +8,24 @@ import {
     deleteTransaction,
     getCashBookData, // Updated import
 } from '../controllers/financialController.js';
-import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
+import { PERMISSIONS } from '../utils/permissions.js';
 
 const router = express.Router();
 
 // Standard transaction routes
 router.route('/')
-    .post(protect, authorizeRoles('admin', 'staff'), createTransaction)
-    .get(protect, authorizeRoles('admin', 'staff'), getTransactions);
+    .post(protect, authorize(PERMISSIONS.FINANCIALS_MANAGE), createTransaction)
+    .get(protect, authorize(PERMISSIONS.FINANCIALS_VIEW), getTransactions);
 
 // New, consolidated cash book route
 router.route('/cashbook')
-    .get(protect, authorizeRoles('admin', 'staff'), getCashBookData);
+    .get(protect, authorize(PERMISSIONS.FINANCIALS_VIEW), getCashBookData);
 
 // Routes for specific transactions by ID
 router.route('/:id')
-    .get(protect, authorizeRoles('admin', 'staff'), getTransactionById)
-    .put(protect, authorizeRoles('admin', 'staff'), updateTransaction)
-    .delete(protect, authorizeRoles('admin'), deleteTransaction); // Admin only for deletion
+    .get(protect, authorize(PERMISSIONS.FINANCIALS_VIEW), getTransactionById)
+    .put(protect, authorize(PERMISSIONS.FINANCIALS_MANAGE), updateTransaction)
+    .delete(protect, authorize(PERMISSIONS.FINANCIALS_MANAGE), deleteTransaction); // Admin only for deletion
 
 export default router;

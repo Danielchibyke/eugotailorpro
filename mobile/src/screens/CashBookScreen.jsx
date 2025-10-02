@@ -24,22 +24,33 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Progress from 'react-native-progress';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { chartColors } from '../styles/chartColors';
-import RNFS from 'react-native-fs';
-import Share from 'react-native-share';
+import { PERMISSIONS, getUserEffectivePermissions } from '../config/permissions';
 
 
 const { width } = Dimensions.get('window');
 
-const CashBookScreen = () => {
+const CashBookScreen = ({ route }) => {
   const { showNotification } = useNotification();
   const navigation = useNavigation();
   const { user } = useAuth();
+
+  const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+  const canViewFinancials = permissions.includes(PERMISSIONS.FINANCIALS_VIEW);
+  const canBalanceFinancials = permissions.includes(PERMISSIONS.FINANCIALS_MANAGE);
+
 
   const [transactions, setTransactions] = useState([]);
   const [balanceRecords, setBalanceRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('cashbook'); // 'cashbook', 'analytics'
+  const [highlightedTransaction, setHighlightedTransaction] = useState(null);
+
+  useEffect(() => {
+    if (route.params?.id) {
+      setHighlightedTransaction(route.params.id);
+    }
+  }, [route.params?.id]);
 
   const fetchCashBookData = useCallback(async () => {
     setLoading(true);
@@ -88,10 +99,12 @@ const CashBookScreen = () => {
   }, [fetchCashBookData]);
 
   useEffect(() => {
-    fetchCashBookData();
-    const unsubscribe = navigation.addListener('focus', fetchCashBookData);
-    return unsubscribe;
-  }, [navigation, fetchCashBookData]);
+    if (canViewFinancials) {
+        fetchCashBookData();
+        const unsubscribe = navigation.addListener('focus', fetchCashBookData);
+        return unsubscribe;
+    }
+  }, [navigation, canViewFinancials, fetchCashBookData]);
 
   const [filterStartDate, setFilterStartDate] = useState(dayjs().subtract(30, 'days').toDate());
   const [filterEndDate, setFilterEndDate] = useState(new Date());
@@ -306,6 +319,7 @@ const processedTransactions = transactions
   const renderCashBookRow = ({ item }) => (
     <View style={[
       styles.row,
+      item.id === highlightedTransaction && styles.highlightedRow,
       item.type === 'balance' && styles.balanceRow,
       item.type === 'income' && styles.incomeRow,
       item.type === 'expense' && styles.expenseRow
@@ -547,96 +561,109 @@ const processedTransactions = transactions
   );
 
   if (loading) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={theme.COLORS.primary} />
+                    <Text style={styles.loadingText}>Loading Cash Book Data...</Text>
+                </View>
+            </BackgroundContainer>
+        );
+    }
+
+    if (!canViewFinancials) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.emptyStateText}>Access Denied</Text>
+                    <Text style={styles.emptyStateSubText}>You do not have permission to view the cash book.</Text>
+                </View>
+            </BackgroundContainer>
+        );
+    }
+
     return (
-      <BackgroundContainer>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.COLORS.primary} />
-          <Text style={styles.loadingText}>Loading Cash Book Data...</Text>
-        </View>
-      </BackgroundContainer>
+        <BackgroundContainer>
+            {/* Header */}
+            <View style={styles.header}>
+                <Text style={styles.title}>Double Column Cash Book</Text>
+                
+                {/* Date Filter */}
+                <View style={styles.filterContainer}>
+                    <TouchableOpacity 
+                        style={styles.dateButton}
+                        onPress={() => { setCurrentPicker('start'); setIsDatePickerVisible(true); }}
+                    >
+                        <Ionicons name="calendar" size={16} color="white" />
+                        <Text style={styles.dateText}>{dayjs(filterStartDate).format('DD MMM YY')}</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.dateSeparator}>to</Text>
+                    <TouchableOpacity 
+                        style={styles.dateButton}
+                        onPress={() => { setCurrentPicker('end'); setIsDatePickerVisible(true); }}
+                    >
+                        <Ionicons name="calendar" size={16} color="white" />
+                        <Text style={styles.dateText}>{dayjs(filterEndDate).format('DD MMM YY')}</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Tab Navigation */}
+                <View style={styles.tabContainer}>
+                    {['cashbook', 'analytics'].map(tab => (
+                        <TouchableOpacity
+                            key={tab}
+                            style={[styles.tab, activeTab === tab && styles.activeTab]}
+                            onPress={() => setActiveTab(tab)}
+                        >
+                            <Ionicons 
+                                name={tab === 'cashbook' ? 'book' : 'analytics'} 
+                                size={16} 
+                                color={activeTab === tab ? theme.COLORS.primary : 'white'} 
+                            />
+                            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+                                {tab === 'cashbook' ? 'Cash Book' : 'Analytics'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Actions */}
+                <View style={styles.actionButtons}>
+                    {canBalanceFinancials && (
+                        <TouchableOpacity style={styles.actionButton} onPress={handleBalanceCashBook}>
+                            <Ionicons name="checkmark-circle" size={20} color="white" />
+                            <Text style={styles.actionButtonText}>Balance</Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={styles.actionButton} onPress={handleExport}>
+                        <Ionicons name="download" size={20} color="white" />
+                        <Text style={styles.actionButtonText}>Export</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Content */}
+            <View style={styles.content}>
+                {activeTab === 'cashbook' ? renderCashBook() : renderAnalytics()}
+            </View>
+
+            {/* Date Picker Modal */}
+            <Modal visible={isDatePickerVisible} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <DateTimePicker
+                            mode="single"
+                            date={currentPicker === 'start' ? filterStartDate : filterEndDate}
+                            onChange={handleDateSelect}
+                        />
+                        <TouchableOpacity style={styles.closeButton} onPress={() => setIsDatePickerVisible(false)}>
+                            <Text style={styles.closeButtonText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        </BackgroundContainer>
     );
-  }
-
-  return (
-    <BackgroundContainer>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Double Column Cash Book</Text>
-        
-        {/* Date Filter */}
-        <View style={styles.filterContainer}>
-          <TouchableOpacity 
-            style={styles.dateButton}
-            onPress={() => { setCurrentPicker('start'); setIsDatePickerVisible(true); }}
-          >
-            <Ionicons name="calendar" size={16} color="white" />
-            <Text style={styles.dateText}>{dayjs(filterStartDate).format('DD MMM YY')}</Text>
-          </TouchableOpacity>
-          <Text style={styles.dateSeparator}>to</Text>
-          <TouchableOpacity 
-            style={styles.dateButton}
-            onPress={() => { setCurrentPicker('end'); setIsDatePickerVisible(true); }}
-          >
-            <Ionicons name="calendar" size={16} color="white" />
-            <Text style={styles.dateText}>{dayjs(filterEndDate).format('DD MMM YY')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Navigation */}
-        <View style={styles.tabContainer}>
-          {['cashbook', 'analytics'].map(tab => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.activeTab]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Ionicons 
-                name={tab === 'cashbook' ? 'book' : 'analytics'} 
-                size={16} 
-                color={activeTab === tab ? theme.COLORS.primary : 'white'} 
-              />
-              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                {tab === 'cashbook' ? 'Cash Book' : 'Analytics'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Actions */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleBalanceCashBook}>
-            <Ionicons name="checkmark-circle" size={20} color="white" />
-            <Text style={styles.actionButtonText}>Balance</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={handleExport}>
-            <Ionicons name="download" size={20} color="white" />
-            <Text style={styles.actionButtonText}>Export</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        {activeTab === 'cashbook' ? renderCashBook() : renderAnalytics()}
-      </View>
-
-      {/* Date Picker Modal */}
-      <Modal visible={isDatePickerVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <DateTimePicker
-              mode="single"
-              date={currentPicker === 'start' ? filterStartDate : filterEndDate}
-              onChange={handleDateSelect}
-            />
-            <TouchableOpacity style={styles.closeButton} onPress={() => setIsDatePickerVisible(false)}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </BackgroundContainer>
-  );
 };
 
 const styles = StyleSheet.create({
@@ -788,6 +815,9 @@ const styles = StyleSheet.create({
   balanceRow: {
     backgroundColor: theme.COLORS.primary,
     fontWeight: 'bold',
+  },
+  highlightedRow: {
+    backgroundColor: theme.COLORS.secondary,
   },
   balanceRowText: {
     color: theme.COLORS.textLight,

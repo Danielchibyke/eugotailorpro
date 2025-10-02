@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Client from '../models/Client.js';
 import Transaction from '../models/Transaction.js';
+import { ROLE_PERMISSIONS } from '../utils/permissions.js';
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -37,6 +38,7 @@ const registerUser = asyncHandler(async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            customPermissions: user.customPermissions,
             token: accessToken, // Access token
             refreshToken: refreshToken, // Refresh token
         });
@@ -68,6 +70,7 @@ const loginUser = asyncHandler(async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            customPermissions: user.customPermissions, // Include customPermissions
             token: accessToken, // Access token
             refreshToken: refreshToken, // Refresh token
         });
@@ -159,6 +162,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     if (user) {
         user.name = req.body.name || user.name;
         user.email = req.body.email || user.email;
+        if (req.body.receiveReminders !== undefined) {
+            user.receiveReminders = req.body.receiveReminders;
+            console.log(`User ${user._id} receiveReminders set to: ${user.receiveReminders}`);
+        }
         if (req.body.password) {
             user.password = req.body.password;
         }
@@ -254,8 +261,10 @@ const deleteUser = asyncHandler(async (req, res) => {
 // @access  Private
 const updateUserPushToken = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
+    const { expoPushToken } = req.body;
+    console.log(`Received expoPushToken for user ${req.user._id}: ${expoPushToken}`);
     if (user) {
-        user.expoPushToken = req.body.expoPushToken;
+        user.expoPushToken = expoPushToken;
         await user.save();
         res.json({ message: 'Push token updated successfully' });
     } else {
@@ -294,7 +303,7 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     const updatedUser = await userToUpdate.save();
 
     res.json({
-        _id: updatedUser._id,
+        _id: updatedUser.email,
         name: updatedUser.name,
         email: updatedUser.email,
         role: updatedUser.role,
@@ -302,5 +311,57 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Update a user's custom permissions (Admin only)
+// @route   PUT /api/auth/users/:id/custom-permissions
+// @access  Private/Admin
+const updateUserCustomPermissions = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { customPermissions } = req.body;
 
-export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser, updateUserPushToken, updateUserStatus };
+    // Validate customPermissions
+    if (!Array.isArray(customPermissions) || !customPermissions.every(p => typeof p === 'string')) {
+        res.status(400);
+        throw new Error('Invalid customPermissions provided. It must be an array of strings.');
+    }
+
+    const userToUpdate = await User.findById(id);
+
+    if (!userToUpdate) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    userToUpdate.customPermissions = customPermissions;
+    const updatedUser = await userToUpdate.save();
+
+    res.json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        customPermissions: updatedUser.customPermissions,
+    });
+});
+
+// @desc    Get current user profile
+// @route   GET /api/auth/me
+// @access  Private
+const getMe = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            customPermissions: user.customPermissions,
+        });
+    } else {
+        res.status(404);
+        throw new Error('User not found');
+    }
+});
+
+
+export { registerUser, loginUser, getDashboardStats, refreshToken, updateUserProfile, getAllUsers, updateUserRole, deleteUser, updateUserPushToken, updateUserStatus, updateUserCustomPermissions, getMe };

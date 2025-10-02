@@ -4,17 +4,18 @@ import {
     getLatestBalanceRecord,
     getAllBalanceRecords,
 } from '../controllers/balanceController.js';
-import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
+import { PERMISSIONS } from '../utils/permissions.js';
 
 const router = express.Router();
 
 router.route('/')
-    .get(protect, authorizeRoles('admin', 'staff'), getAllBalanceRecords);
+    .get(protect, authorize(PERMISSIONS.FINANCIALS_VIEW), getAllBalanceRecords);
 
 router.route('/setLastBalancedDate')
-    .post(protect, authorizeRoles('admin', 'staff'), setLastBalancedDate);
+    .post(protect, authorize(PERMISSIONS.FINANCIALS_MANAGE), setLastBalancedDate);
 
 router.route('/latest')
-    .get(protect, authorizeRoles('admin', 'staff'), getLatestBalanceRecord);
+    .get(protect, authorize(PERMISSIONS.FINANCIALS_VIEW), getLatestBalanceRecord);
 
 export default router;

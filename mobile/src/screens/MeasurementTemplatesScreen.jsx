@@ -176,6 +176,23 @@ const styles = StyleSheet.create({
         fontSize: theme.FONT_SIZES.md,
         color: theme.COLORS.textMedium,
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyStateText: {
+        fontSize: theme.FONT_SIZES.lg,
+        fontWeight: 'bold',
+        color: theme.COLORS.textMedium,
+        textAlign: 'center',
+    },
+    emptyStateSubText: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textMedium,
+        marginTop: theme.SPACING.xs,
+        textAlign: 'center',
+    },
 });
 
 export default MeasurementTemplatesScreen;

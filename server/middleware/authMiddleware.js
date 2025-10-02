@@ -35,15 +35,21 @@ const protect = asyncHandler(async (req, res, next) => {
     }
 });
 
-// Middleware to check user roles (optional, but good for fine-grained access control)
-const authorizeRoles = (...roles) => {
+import { ROLES, ROLE_PERMISSIONS, getUserEffectivePermissions } from '../utils/permissions.js';
+
+const authorize = (...requiredPermissions) => {
     return (req, res, next) => {
-        if (!req.user || !roles.includes(req.user.role)) {
+        // Get effective permissions for the user, combining role-based and custom permissions
+        const userEffectivePermissions = getUserEffectivePermissions(req.user);
+        const hasPermission = requiredPermissions.every(p => userEffectivePermissions.includes(p));
+
+        if (!req.user || !hasPermission) {
             res.status(403); // Forbidden
-            throw new Error(`User role ${req.user ? req.user.role : 'unauthenticated'} is not authorized to access this route`);
+            throw new Error(`Access Denied: You do not have the required permissions.`);
         }
         next();
     };
 };
 
-export { protect, authorizeRoles };
+
+export { protect, authorize };

@@ -6,18 +6,23 @@ import {
     getBookingById,
     updateBooking,
     deleteBooking,
+    getReminders,
 } from '../controllers/bookingController.js';
-import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
+import { PERMISSIONS } from '../utils/permissions.js';
 
 const router = express.Router();
 
 router.route('/')
-    .post(protect, authorizeRoles('admin', 'staff'), createBooking)
-    .get(protect, authorizeRoles('admin', 'staff'), getBookings);
+    .post(protect, authorize(PERMISSIONS.BOOKINGS_CREATE), createBooking)
+    .get(protect, authorize(PERMISSIONS.BOOKINGS_VIEW), getBookings);
+
+router.route('/reminders')
+    .get(protect, authorize(PERMISSIONS.BOOKINGS_VIEW), getReminders);
 
 router.route('/:id')
-    .get(protect, authorizeRoles('admin', 'staff'), getBookingById)
-    .put(protect, authorizeRoles('admin', 'staff'), updateBooking)
-    .delete(protect, authorizeRoles('admin'), deleteBooking); // Admin only for deletion
+    .get(protect, authorize(PERMISSIONS.BOOKINGS_VIEW), getBookingById)
+    .put(protect, authorize(PERMISSIONS.BOOKINGS_EDIT), updateBooking)
+    .delete(protect, authorize(PERMISSIONS.BOOKINGS_DELETE), deleteBooking); // Admin only for deletion
 
 export default router;

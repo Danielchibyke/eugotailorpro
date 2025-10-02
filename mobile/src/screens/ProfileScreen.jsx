@@ -1,15 +1,25 @@
-import React from 'react';
+import React, {  useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions'; // Import permissions
 
 const ProfileScreen = ({ navigation }) => {
-    const { user, logout } = useAuth();
+    const { user, logout,refreshUser } = useAuth();
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            refreshUser();
+        });
+        return unsubscribe;
+    }, [navigation, refreshUser]);
 
     if (!user) {
         return null;
     }
+
+    const userHasUserManagementPermission = getUserEffectivePermissions(user).includes(PERMISSIONS.USERS_MANAGE);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -30,16 +40,16 @@ const ProfileScreen = ({ navigation }) => {
             </View>
             <View style={{ marginTop: theme.SPACING.lg }}>
                 <TouchableOpacity
-                    style={styles.actionButton}
+                    style={[styles.actionButton, { backgroundColor: theme.COLORS.white }]}
                     onPress={() => navigation.navigate('EditProfile')}
                 >
                     <Ionicons name="person-outline" size={24} style={styles.actionIcon} />
                     <Text style={styles.actionButtonText}>Edit Profile</Text>
                 </TouchableOpacity>
 
-                {user?.role === 'admin' && (
+                {userHasUserManagementPermission && (
                     <TouchableOpacity
-                        style={styles.actionButton}
+                        style={[styles.actionButton, { backgroundColor: theme.COLORS.white }]}
                         onPress={() => navigation.navigate('UserManagement')}
                     >
                         <Ionicons name="people-outline" size={24} style={styles.actionIcon} />

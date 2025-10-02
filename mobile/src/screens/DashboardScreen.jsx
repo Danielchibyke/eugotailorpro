@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -18,7 +18,9 @@ import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../styles/theme';
 import { useDashboardData } from '../hooks/useDashboardData';
-import { getApi } from '../utils/api';
+import { getApi } from '../utils/api';                                                             
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
+
 
 
 const StatCard = ({ icon, label, value, color, onPress, fullWidth }) => (
@@ -41,15 +43,34 @@ const QuickActionButton = ({ icon, label, onPress }) => (
 );
 
 const DashboardScreen = ({ navigation }) => {
-    const { user } = useAuth();
-    const { stats, recentBookings, loading, error, refresh } = useDashboardData();
+    const { user, refreshUser } = useAuth();
+    const { stats, recentBookings, loading, error, refresh, dataOrigin } = useDashboardData();
     const { showNotification } = useNotification();
     const api = getApi();
 
+    const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+
+    const canViewBookings = permissions.includes(PERMISSIONS.BOOKINGS_VIEW);
+    const canCreateBookings = permissions.includes(PERMISSIONS.BOOKINGS_CREATE);
+    const canViewClients = permissions.includes(PERMISSIONS.CLIENTS_VIEW);
+    const canCreateClients = permissions.includes(PERMISSIONS.CLIENTS_CREATE);
+   
+  
+    const canViewFinancials = permissions.includes(PERMISSIONS.FINANCIALS_VIEW);
+    const canManageUsers = permissions.includes(PERMISSIONS.USERS_MANAGE);
+
+    const canViewDashboard = canViewBookings || canViewClients || canViewFinancials;
+
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', refresh);
-        return unsubscribe;
-    }, [navigation, refresh]);
+        if (canViewDashboard) {
+            refresh();
+            const unsubscribe = navigation.addListener('focus', () => {
+                refresh();
+                refreshUser(); // Refresh user permissions on focus
+            });
+            return unsubscribe;
+        }
+    }, [navigation, canViewDashboard, refresh, refreshUser]);
 
     const handleEditBooking = useCallback((booking) => {
         navigation.navigate('AddBooking', { booking: booking });
@@ -94,12 +115,21 @@ const DashboardScreen = ({ navigation }) => {
     const renderBookingCard = useCallback(({ item }) => (
         <BookingCard
             booking={item}
-            onView={() => navigation.navigate('BookingDetail', { bookingId: item._id })}
+            onView={() => navigation.navigate('BookingDetail', { id: item._id })}
             onEdit={() => handleEditBooking(item)}
             onDelete={() => handleDeleteBooking(item)}
             onComplete={() => handleCompleteBooking(item)}
         />
     ), [navigation, handleEditBooking, handleDeleteBooking, handleCompleteBooking]);
+
+    if (!canViewDashboard) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text style={styles.emptyStateText}>Access Denied</Text>
+                <Text style={styles.emptyStateSubText}>You do not have permission to view the dashboard.</Text>
+            </View>
+        );
+    }
 
     return (
         <BackgroundContainer>
@@ -116,40 +146,69 @@ const DashboardScreen = ({ navigation }) => {
                 <View style={styles.header}>
                     <Text style={styles.headerGreeting}>Hello, {user && user.name ? user.name : 'User'}!</Text>
                     <Text style={styles.headerSlogan}>🙌🙌</Text>
+                    {dataOrigin && (
+                        <View style={styles.dataOriginContainer}>
+                            <Ionicons
+                                name={dataOrigin === 'cache' ? 'cloud-offline-outline' : 'cloud-done-outline'}
+                                size={16}
+                                color={theme.COLORS.textLight}
+                            />
+                            <Text style={styles.dataOriginText}>
+                                {dataOrigin === 'cache' ? 'Offline Data' : 'Online Data'}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 <View style={styles.statsGrid}>
-                    <StatCard icon="briefcase-outline" label="Total Bookings" value={stats.totalBookings} color={theme.COLORS.primary} onPress={() => navigation.navigate('Bookings')} />
-                    <StatCard icon="time-outline" label="Pending" value={stats.pendingBookings} color={theme.COLORS.accent} onPress={() => navigation.navigate('Bookings')} />
-                    <StatCard icon="people-outline" label="Total Clients" value={stats.totalClients} color={theme.COLORS.darkPrimary} onPress={() => navigation.navigate('Clients')}  fullWidth={true}/>
-                    <StatCard icon="cash-outline" label="Revenue" value={`₦${stats.totalRevenue.toFixed(2)}`} color={theme.COLORS.success} onPress={() => navigation.navigate('Financials')} fullWidth={true} />
+                    {canViewBookings && (
+                        <>
+                            <StatCard icon="briefcase-outline" label="Total Bookings" value={stats.totalBookings} color={theme.COLORS.primary} onPress={() => navigation.navigate('Bookings')} />
+                            <StatCard icon="time-outline" label="Pending" value={stats.pendingBookings} color={theme.COLORS.accent} onPress={() => navigation.navigate('Bookings')} />
+                        </>
+                    )}
+                    {canViewClients && <StatCard icon="people-outline" label="Total Clients" value={stats.totalClients} color={theme.COLORS.darkPrimary} onPress={() => navigation.navigate('Clients')}  fullWidth={true}/>}
+                    {canViewFinancials && <StatCard icon="cash-outline" label="Revenue" value={`₦${stats.totalRevenue.toFixed(2)}`} color={theme.COLORS.success} onPress={() => navigation.navigate('Financials')} fullWidth={true} />}
                 </View>
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Quick Actions</Text>
                     <View style={styles.quickActionsGrid}>
-                        <QuickActionButton icon="add-circle-outline" label="New Booking" onPress={() => navigation.navigate('AddBooking')} />
-                        <QuickActionButton icon="person-add-outline" label="New Client" onPress={() => navigation.navigate('AddClient')} />
-                        <QuickActionButton icon="swap-horizontal-outline" label="Add Transaction" onPress={() => navigation.navigate('Financials', { openModal: true })} />
-                        {user?.role === 'admin' && (
-                            <QuickActionButton icon="person-add-outline" label="Register User" onPress={() => navigation.navigate('Register')} />
-                        )}
+                        {canCreateBookings && <QuickActionButton icon="add-circle-outline" label="New Booking" onPress={() => navigation.navigate('AddBooking')} />}
+                        {canCreateClients && <QuickActionButton icon="person-add-outline" label="New Client" onPress={() => navigation.navigate('AddClient')} />}
+                        {canViewFinancials && <QuickActionButton icon="swap-horizontal-outline" label="Add Transaction" onPress={() => navigation.navigate('Financials', { openModal: true })} />}
+                        {canViewBookings && <QuickActionButton icon="notifications-outline" label="Reminders" onPress={() => navigation.navigate('Reminders')} />}
+                        {canManageUsers && <QuickActionButton icon="person-add-outline" label="Register User" onPress={() => navigation.navigate('Register')} />}
+                        <QuickActionButton icon="notifications-outline" label="Test Local Notif" onPress={async () => {
+                            await Notifications.scheduleNotificationAsync({
+                                content: {
+                                    title: "Local Test Reminder",
+                                    body: "This is a test local reminder notification.",
+                                    data: { screen: 'BookingDetail', id: 'test_booking_id' },
+                                    categoryId: 'reminder',
+                                },
+                                trigger: { seconds: 1 }, // Show immediately
+                            });
+                            showNotification('Local notification scheduled!', 'success');
+                        }} />
                     </View>
                 </View>
 
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Recent Activity</Text>
-                    {recentBookings.length > 0 ? (
-                        <FlatList
-                            data={recentBookings}
-                            renderItem={renderBookingCard}
-                            keyExtractor={(item) => item._id}
-                            scrollEnabled={false}
-                        />
-                    ) : (
-                        <Text style={styles.emptyStateText}>No recent bookings to show.</Text>
-                    )}
-                </View>
+                {canViewBookings && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Recent Activity</Text>
+                        {recentBookings.length > 0 ? (
+                            <FlatList
+                                data={recentBookings}
+                                renderItem={renderBookingCard}
+                                keyExtractor={(item) => item._id}
+                                scrollEnabled={false}
+                            />
+                        ) : (
+                            <Text style={styles.emptyStateText}>No recent bookings to show.</Text>
+                        )}
+                    </View>
+                )}
             </ScrollView>
         </BackgroundContainer>
     );
@@ -275,10 +334,30 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     emptyStateText: {
-        textAlign: 'center',
+        fontSize: theme.FONT_SIZES.lg,
+        fontWeight: 'bold',
         color: theme.COLORS.textMedium,
-        padding: theme.SPACING.lg,
+        textAlign: 'center',
+    },
+    emptyStateSubText: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textMedium,
+        marginTop: theme.SPACING.xs,
+        textAlign: 'center',
+      },
+    dataOriginContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: theme.SPACING.sm,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: theme.SPACING.sm,
+        paddingVertical: theme.SPACING.xs,
+        borderRadius: theme.BORDERRADIUS.md,
+    },
+    dataOriginText: {
+        fontSize: theme.FONT_SIZES.sm,
+        color: theme.COLORS.textLight,
+        marginLeft: theme.SPACING.xs,
     },
 });
-
 export default DashboardScreen;

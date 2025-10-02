@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+
+
+import React, { useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -6,6 +8,7 @@ import { getApi } from '../utils/api';
 import { theme } from '../styles/theme';
 import BackgroundContainer from '../components/BackgroundContainer';
 import { Picker } from '@react-native-picker/picker';
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
 
 const RegisterScreen = ({ navigation }) => {
     const [name, setName] = useState('');
@@ -15,6 +18,9 @@ const RegisterScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
     const { showNotification } = useNotification();
+
+    const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+    const canManageUsers = permissions.includes(PERMISSIONS.USERS_MANAGE);
 
     const handleRegister = async () => {
         if (!name || !email || !password) {
@@ -32,6 +38,17 @@ const RegisterScreen = ({ navigation }) => {
             setLoading(false);
         }
     };
+
+    if (!canManageUsers) {
+        return (
+            <BackgroundContainer>
+                <View style={styles.container}>
+                    <Text style={styles.title}>Access Denied</Text>
+                    <Text style={styles.buttonText}>You do not have permission to register new users.</Text>
+                </View>
+            </BackgroundContainer>
+        );
+    }
 
     return (
         <BackgroundContainer>

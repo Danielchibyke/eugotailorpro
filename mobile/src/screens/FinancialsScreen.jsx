@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback , useMemo} from 'react';
 import {
     View,
     Text,
@@ -23,9 +23,10 @@ import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { getApi } from '../utils/api';
 import theme from '../styles/theme';
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
 
 const FinancialsScreen = ({ navigation }) => {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [transactions, setTransactions] = useState([]);
     const [clients, setClients] = useState([]);
     const netInfo = useNetInfo();
@@ -45,6 +46,9 @@ const FinancialsScreen = ({ navigation }) => {
     });
 
     const { showNotification } = useNotification();
+    const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+    const canViewFinancials = permissions.includes(PERMISSIONS.FINANCIALS_VIEW);
+    const canCreateFinancials = permissions.includes(PERMISSIONS.FINANCIALS_MANAGE);
 
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
@@ -70,22 +74,23 @@ const FinancialsScreen = ({ navigation }) => {
     }, []);
 
     useEffect(() => {
-        fetchTransactions();
-        fetchClients();
         const unsubscribe = navigation.addListener('focus', () => {
+            refreshUser();
+        });
+        return unsubscribe;
+    }, [navigation, refreshUser]);
+
+    useEffect(() => {
+        if (canViewFinancials) {
             fetchTransactions();
+            fetchClients();
+
             if (navigation.getState().routes[navigation.getState().index].params?.openModal) {
                 openAddTransactionModal();
                 navigation.setParams({ openModal: false }); // Reset param
             }
-        });
-        // Initial check on component mount
-        if (navigation.getState().routes[navigation.getState().index].params?.openModal) {
-            openAddTransactionModal();
-            navigation.setParams({ openModal: false }); // Reset param
         }
-        return unsubscribe;
-    }, [navigation, fetchTransactions, fetchClients, openAddTransactionModal]);
+    }, [canViewFinancials, navigation]);
 
     const handleInputChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
@@ -171,6 +176,17 @@ const FinancialsScreen = ({ navigation }) => {
         </View>
     );
 
+    if (!canViewFinancials) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text style={styles.emptyStateText}>Access Denied</Text>
+                <Text style={styles.emptyStateSubText}>
+                    You do not have permission to view financials.
+                </Text>
+            </View>
+        );
+    }
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -197,9 +213,11 @@ const FinancialsScreen = ({ navigation }) => {
                 onRefresh={fetchTransactions}
             />
 
-            <TouchableOpacity style={styles.fab} onPress={openAddTransactionModal}>
-                <Ionicons name="add" size={30} color={theme.COLORS.textLight} />
-            </TouchableOpacity>
+            {canCreateFinancials && (
+                <TouchableOpacity style={styles.fab} onPress={openAddTransactionModal}>
+                    <Ionicons name="add" size={30} color={theme.COLORS.textLight} />
+                </TouchableOpacity>
+            )}
 
             <Modal
                 animationType="slide"

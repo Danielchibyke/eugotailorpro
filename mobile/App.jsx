@@ -5,11 +5,13 @@ import { AuthProvider, useAuth } from './src/context/AuthContext'; // Import use
 import { NotificationProvider, useNotification } from './src/context/NotificationContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { initializeOfflineManager } from './src/utils/offlineManager';
+import { setNotificationHandler } from './src/utils/api'; // Import setNotificationHandler
 import './src/config/firebaseConfig'; // Import Firebase initialization
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font';
 
 import ErrorBoundary from './src/utils/ErrorBoundary';
+import Notification from './src/components/Notification'; // Import Notification component
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -21,7 +23,25 @@ const AppContent = () => {
     initializeOfflineManager(showNotification);
   }, [showNotification]);
 
+  useEffect(() => {
+    setNotificationHandler(showNotification);
+  }, [showNotification]);
+
   return <AppNavigator />;
+}
+
+const AppRoot = () => {
+  const { notification } = useNotification();
+  return (
+    <View style={{ flex: 1 }}>
+      <AuthProvider>
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
+      </AuthProvider>
+      {notification && <Notification message={notification.message} type={notification.type} />}
+    </View>
+  );
 }
 
 export default function App() {
@@ -48,16 +68,8 @@ export default function App() {
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={async () => {
-      await SplashScreen.hideAsync();
-    }}>
-        <NotificationProvider>
-          <AuthProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
-          </AuthProvider>
-        </NotificationProvider>
-    </View>
+    <NotificationProvider>
+      <AppRoot />
+    </NotificationProvider>
   );
 }

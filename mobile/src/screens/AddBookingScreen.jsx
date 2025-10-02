@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Modal, Image, Button, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, Modal, Image, ActivityIndicator } from 'react-native';
 import TopNavbar from '../components/TopNavbar';
 import { theme } from '../styles/theme';
 import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios'; // Keep axios for direct upload if needed, but use api.post for authenticated requests
+import axios from 'axios';
 import * as ImageManipulator from 'expo-image-manipulator';
 import ImageZoomModal from '../components/ImageZoomModal';
 import ClientSearchModal from '../components/ClientSearchModal';
@@ -16,7 +16,7 @@ import { useBookings } from '../hooks/useBookings';
 import { useClients } from '../hooks/useClients';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getApi } from '../utils/api';
-
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
 
 const AddBookingScreen = ({ navigation, route }) => {
     const { booking } = route.params || {};
@@ -24,56 +24,64 @@ const AddBookingScreen = ({ navigation, route }) => {
     const { clients, loading: clientsLoading } = useClients();
     const { addBooking, updateBooking } = useBookings();
     const { showNotification } = useNotification();
-    const api = getApi(); // Get the configured API instance
+    const api = getApi();
 
     // --- State Declarations ---
     const [formData, setFormData] = useState({
         client: null,
         bookingDate: new Date(),
         deliveryDate: new Date(),
-        reminderDate: new Date(),
+        reminderDates: [],
         status: 'Pending',
         notes: '',
-        designs: [], // Changed to array
+        designs: [],
         price: '',
         payment: '',
     });
-    const [selectedDesigns, setSelectedDesigns] = useState([]); // New state for multiple designs
+    const [selectedDesigns, setSelectedDesigns] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
     const [zoomedImage, setZoomedImage] = useState(null);
-    const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-    const [datePickerField, setDatePickerField] = useState(null);
+    const [isDateTimePickerVisible, setDateTimePickerVisible] = useState(false);
+    const [dateTimePickerField, setDateTimePickerField] = useState(null);
+    const [editingReminderIndex, setEditingReminderIndex] = useState(null);
+    const [tempSelectedDate, setTempSelectedDate] = useState({ date: new Date(), time: new Date() });
+    
     const [isLoadingBooking, setIsLoadingBooking] = useState(true);
     const [clientSearchModalVisible, setClientSearchModalVisible] = useState(false);
 
-    // --- Effects ---
+    const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+    const canViewBookings = permissions.includes(PERMISSIONS.BOOKINGS_VIEW);
+    const canCreateBookings = permissions.includes(PERMISSIONS.BOOKINGS_CREATE);
+    
+    if (!canCreateBookings) {
+        navigation.goBack();
+        showNotification('You do not have permission to create or edit bookings.', 'error');
+        return null;
+    }
 
+    // --- Effects ---
     useEffect(() => {
         if (booking) {
-            setIsLoadingBooking(true);
             setFormData({
                 client: booking.client?._id,
                 bookingDate: new Date(booking.bookingDate),
                 deliveryDate: new Date(booking.deliveryDate),
-                reminderDate: new Date(booking.reminderDate),
+                reminderDates: booking.reminderDates && Array.isArray(booking.reminderDates) ? booking.reminderDates.map(reminder => ({ date: new Date(reminder.date), user: reminder.user })) : [],
                 status: booking.status,
                 notes: booking.notes || '',
-                designs: booking.designs || [], // Ensure designs is an array
+                designs: booking.designs || [],
                 price: (booking.price || '').toString(),
                 payment: (booking.payment || '').toString(),
             });
             if (booking.designs) {
                 setSelectedDesigns(booking.designs);
             }
-            setIsLoadingBooking(false);
-        } else {
-            setIsLoadingBooking(false);
         }
+        setIsLoadingBooking(false);
     }, [booking]);
 
     // --- Functions ---
-
     const openZoomModal = useCallback((imageUrl) => {
         setZoomedImage(imageUrl);
         setIsZoomModalVisible(true);
@@ -84,15 +92,78 @@ const AddBookingScreen = ({ navigation, route }) => {
         setZoomedImage(null);
     }, []);
 
-    const openDatePicker = useCallback((field) => {
-        setDatePickerField(field);
-        setDatePickerVisible(true);
+    const openDateTimePicker = useCallback((field, index = null) => {
+        setDateTimePickerField(field);
+        setEditingReminderIndex(index);
+        
+        let initialDate;
+        if (field === 'reminderDates') {
+            // For reminder dates, use the specific reminder date if editing an existing one
+            if (index !== null && formData.reminderDates && formData.reminderDates[index]) {
+                initialDate = formData.reminderDates[index].date;
+            } else {
+                // For new reminder, default to the delivery date or current date
+                initialDate = formData.deliveryDate || new Date();
+            }
+        } else {
+            // For other fields (bookingDate, deliveryDate)
+            initialDate = formData[field] || new Date();
+        }
+        
+        console.log(`Opening date picker for ${field}, index: ${index}, initial date:`, initialDate);
+        
+        setTempSelectedDate({ 
+            date: initialDate, 
+            time: initialDate 
+        });
+        setDateTimePickerVisible(true);
+    }, [formData]);
+
+    const onDateTimeChange = (params) => {
+        if (!params.date) return;
+        setTempSelectedDate(prev => ({
+            date: dayjs(params.date).toDate(),
+            time: dayjs(params.date).toDate()
+        }));
+    };
+
+    const handleConfirmDateTime = useCallback(() => {
+        const combinedDate = dayjs(tempSelectedDate.date)
+            .hour(dayjs(tempSelectedDate.time).hour())
+            .minute(dayjs(tempSelectedDate.time).minute())
+            .toDate();
+    
+        console.log(`Confirmed date: ${combinedDate}, field: ${dateTimePickerField}, index: ${editingReminderIndex}`);
+    
+        if (dateTimePickerField === 'reminderDates') {
+            const updated = formData.reminderDates ? [...formData.reminderDates] : [];
+            const reminderObject = { date: combinedDate, user: user._id };
+            
+            if (editingReminderIndex !== null) {
+                // Update existing reminder
+                updated[editingReminderIndex] = reminderObject;
+            } else {
+                // Add new reminder
+                updated.push(reminderObject);
+            }
+            
+            setFormData(prev => ({ ...prev, reminderDates: updated }));
+        } else {
+            // For bookingDate or deliveryDate
+            setFormData(prev => ({ ...prev, [dateTimePickerField]: combinedDate }));
+        }
+        
+        setDateTimePickerVisible(false);
+        setEditingReminderIndex(null); // Reset the editing index
+    }, [dateTimePickerField, editingReminderIndex, tempSelectedDate, formData.reminderDates, user._id]);
+    
+    const handleCancelDateTime = useCallback(() => {
+        setDateTimePickerVisible(false);
     }, []);
 
-    const onDateChange = useCallback((params) => {
-        setDatePickerVisible(false);
-        handleInputChange(datePickerField, params.date);
-    }, [datePickerField, handleInputChange]); // Added handleInputChange to dependencies
+    
+
+    
 
     const handleInputChange = useCallback((field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -124,7 +195,7 @@ const AddBookingScreen = ({ navigation, route }) => {
         } finally {
             setIsUploading(false);
         }
-    }, [api, showNotification]); // Dependencies for useCallback
+    }, [api, showNotification]);
 
     const pickImage = useCallback(async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
@@ -151,27 +222,44 @@ const AddBookingScreen = ({ navigation, route }) => {
             }
             setSelectedDesigns(newDesigns);
         }
-    }, [selectedDesigns, uploadImage]); // Dependencies for useCallback
+    }, [selectedDesigns, uploadImage]);
 
-    // Defined as a regular async function
     async function handleSaveBooking() {
-        console.log('handleSaveBooking called'); // Debug log
+        console.log('handleSaveBooking called');
+        console.log('Form data on save:', formData);
         if (!formData.client || !formData.price) {
             showNotification('Please fill in all fields.', 'error');
             return;
+        }
+
+        if (dayjs(formData.deliveryDate).isBefore(dayjs(formData.bookingDate))) {
+            showNotification('Delivery date cannot be before the booking date.', 'error');
+            return;
+        }
+
+        for (const reminder of formData.reminderDates) {
+            if (dayjs(reminder.date).isAfter(dayjs(formData.deliveryDate))) {
+                showNotification('Reminder date cannot be after the delivery date.', 'error');
+                return;
+            }
         }
 
         const bookingData = {
             client: formData.client,
             price: parseFloat(formData.price) || 0,
             payment: parseFloat(formData.payment) || 0,
-            bookingDate: dayjs(formData.bookingDate).toDate(),
-            deliveryDate: dayjs(formData.deliveryDate).toDate(),
-            reminderDate: dayjs(formData.reminderDate).toDate(),
+            bookingDate: dayjs(formData.bookingDate).format('YYYY-MM-DDTHH:mm:ss'),
+            deliveryDate: dayjs(formData.deliveryDate).format('YYYY-MM-DDTHH:mm:ss'),
+            reminderDates: formData.reminderDates.map(reminder => ({ 
+                date: dayjs(reminder.date).format('YYYY-MM-DDTHH:mm:ss'),
+                user: reminder.user 
+            })),
             status: formData.status,
             notes: formData.notes || null,
-            designs: selectedDesigns, // Use the array of selected designs
+            designs: selectedDesigns,
         };
+
+        console.log('Booking data being sent to server:', bookingData);
 
         let result;
         if (booking) {
@@ -186,7 +274,7 @@ const AddBookingScreen = ({ navigation, route }) => {
         } else {
             showNotification(result.error, 'error');
         }
-    } // No useCallback here
+    }
 
     const handleClientSelect = useCallback((client) => {
         setFormData(prev => ({ ...prev, client: client._id }));
@@ -197,9 +285,9 @@ const AddBookingScreen = ({ navigation, route }) => {
         setClientSearchModalVisible(false);
         navigation.navigate('AddClient');
     }, [navigation]);
+    console.log(dateTimePickerField, tempSelectedDate);
 
     // --- Render ---
-
     if (isLoadingBooking || clientsLoading) {
         return (
             <View style={styles.loadingContainer}>
@@ -213,12 +301,14 @@ const AddBookingScreen = ({ navigation, route }) => {
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.heading}>{booking ? 'Edit Booking' : 'Add Booking'}</Text>
+                
                 <TouchableOpacity onPress={() => setClientSearchModalVisible(true)} style={styles.clientSelector}>
                     <Text style={styles.clientSelectorText}>
                         {formData.client ? clients.find(c => c._id === formData.client)?.name : 'Select a Client'}
                     </Text>
                     <Ionicons name="chevron-forward" size={20} color={theme.COLORS.textMedium} />
                 </TouchableOpacity>
+                
                 <TextInput
                     style={styles.input}
                     placeholder="Price"
@@ -226,6 +316,7 @@ const AddBookingScreen = ({ navigation, route }) => {
                     onChangeText={(value) => handleInputChange('price', value)}
                     keyboardType="numeric"
                 />
+                
                 <TextInput
                     style={styles.input}
                     placeholder="Payment"
@@ -233,6 +324,7 @@ const AddBookingScreen = ({ navigation, route }) => {
                     onChangeText={(value) => handleInputChange('payment', value)}
                     keyboardType="numeric"
                 />
+                
                 <TouchableOpacity
                     style={styles.button}
                     onPress={pickImage}
@@ -244,8 +336,9 @@ const AddBookingScreen = ({ navigation, route }) => {
                         <Text style={styles.buttonText}>Upload New Design Image</Text>
                     )}
                 </TouchableOpacity>
+                
                 <TouchableOpacity
-                    style={[styles.button, styles.secondaryButton]}
+                    style={[styles.button, styles.secondaryButton, styles.selectedDesignTitle]}
                     onPress={() => navigation.navigate('Gallery', {
                         selectMode: true,
                         multiple: true,
@@ -255,8 +348,9 @@ const AddBookingScreen = ({ navigation, route }) => {
                         selectedDesigns: selectedDesigns
                     })}
                 >
-                    <Text style={styles.buttonText}>Select Design from Gallery</Text>
+                    <Text style={[styles.buttonText, {color:theme.COLORS.primary }] }>Select Design from Gallery</Text>
                 </TouchableOpacity>
+                
                 {selectedDesigns.length > 0 && (
                     <View style={styles.selectedDesignContainer}>
                         <Text style={styles.selectedDesignTitle}>Selected Designs:</Text>
@@ -274,6 +368,7 @@ const AddBookingScreen = ({ navigation, route }) => {
                         </ScrollView>
                     </View>
                 )}
+                
                 <TextInput
                     style={styles.input}
                     placeholder="Notes"
@@ -281,6 +376,7 @@ const AddBookingScreen = ({ navigation, route }) => {
                     onChangeText={(value) => handleInputChange('notes', value)}
                     multiline
                 />
+                
                 <View style={styles.pickerContainer}>
                     <Picker
                         selectedValue={formData.status}
@@ -293,36 +389,72 @@ const AddBookingScreen = ({ navigation, route }) => {
                         <Picker.Item label="Cancelled" value="Cancelled" />
                     </Picker>
                 </View>
+                
                 <Text style={styles.dateLabel}>Booking Date</Text>
-                <TouchableOpacity onPress={() => openDatePicker('bookingDate')} style={styles.dateInputButton}>
-                    <Text style={styles.dateInputText}>{dayjs(formData.bookingDate).format('YYYY-MM-DD')}</Text>
+                <TouchableOpacity onPress={() => openDateTimePicker('bookingDate')} style={[styles.dateInputButton, formData.bookingDate && { backgroundColor: theme.COLORS.lightPrimary }]}>
+                    <Text style={styles.dateInputText}>{dayjs(formData.bookingDate).format('YYYY-MM-DD HH:mm')}</Text>
                 </TouchableOpacity>
+                
                 <Text style={styles.dateLabel}>Delivery Date</Text>
-                <TouchableOpacity onPress={() => openDatePicker('deliveryDate')} style={styles.dateInputButton}>
-                    <Text style={styles.dateInputText}>{dayjs(formData.deliveryDate).format('YYYY-MM-DD')}</Text>
+                <TouchableOpacity onPress={() => openDateTimePicker('deliveryDate')} style={[styles.dateInputButton, formData.deliveryDate && { backgroundColor: theme.COLORS.lightPrimary }]}>
+                    <Text style={styles.dateInputText}>{dayjs(formData.deliveryDate).format('YYYY-MM-DD HH:mm')}</Text>
                 </TouchableOpacity>
-                <Text style={styles.dateLabel}>Reminder Date</Text>
-                <TouchableOpacity onPress={() => openDatePicker('reminderDate')} style={styles.dateInputButton}>
-                    <Text style={styles.dateInputText}>{dayjs(formData.reminderDate).format('YYYY-MM-DD')}</Text>
+                
+                <Text style={styles.dateLabel}>Reminders</Text>
+                {formData.reminderDates.map((reminder, index) => (
+                    <View key={index} style={styles.reminderDateContainer}>
+                        <TouchableOpacity onPress={() => openDateTimePicker('reminderDates', index)} style={[styles.dateInputButton, reminder.date && { backgroundColor: theme.COLORS.lightPrimary }]}>
+                            <Text style={styles.dateInputText}>{dayjs(reminder.date).format('YYYY-MM-DD HH:mm')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => {
+                            const newReminderDates = formData.reminderDates ? [...formData.reminderDates] : [];
+                            newReminderDates.splice(index, 1);
+                            handleInputChange('reminderDates', newReminderDates);
+                        }} style={styles.removeReminderButton}>
+                            <Ionicons name="trash-bin-outline" size={24} color={theme.COLORS.danger} />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+                
+                <TouchableOpacity onPress={() => openDateTimePicker('reminderDates')} style={styles.addReminderButton}>
+                    <Ionicons name="add-circle-outline" size={24} color={theme.COLORS.primary} />
+                    <Text style={styles.addReminderButtonText}>Add Reminder</Text>
                 </TouchableOpacity>
+                
                 <TouchableOpacity style={styles.button} onPress={handleSaveBooking}>
                     <Text style={styles.buttonText}>{booking ? 'Save Changes' : 'Add Booking'}</Text>
                 </TouchableOpacity>
             </ScrollView>
 
+            
+
             <Modal
                 animationType="fade"
                 transparent={true}
-                visible={isDatePickerVisible}
-                onRequestClose={() => setDatePickerVisible(false)}
+                visible={isDateTimePickerVisible}
+                onRequestClose={() => setDateTimePickerVisible(false)}
             >
                 <View style={styles.datePickerOverlay}>
                     <View style={styles.datePickerModalView}>
                         <DateTimePicker
-                            date={formData[datePickerField] ? dayjs(formData[datePickerField]) : dayjs()}
                             mode="single"
-                            onChange={onDateChange}
+                            timePicker={true}
+                            date={tempSelectedDate.date}
+                            onChange={onDateTimeChange}
+                            is24Hour={true}
+                            androidVariant="nativeAndroid"
+                            maximumDate={dateTimePickerField === 'reminderDates' ? formData.deliveryDate : null}
+                            minimumDate={dateTimePickerField === 'deliveryDate' ? formData.bookingDate : null}
+                           
+
+                            
                         />
+                        <TouchableOpacity onPress={handleConfirmDateTime} style={styles.confirmButton}>
+                            <Text style={styles.buttonText}>Confirm</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={handleCancelDateTime} style={[styles.cancelButton, { marginTop: 10 }]}>
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -399,28 +531,17 @@ const styles = StyleSheet.create({
         fontSize: theme.FONT_SIZES.body,
         color: theme.COLORS.textDark,
         marginBottom: theme.SPACING.sm,
+        fontWeight: 'bold',
+        
     },
     pickerContainer: {
         backgroundColor: theme.COLORS.backgroundCard,
         borderRadius: theme.BORDERRADIUS.md,
         marginBottom: theme.SPACING.md,
         justifyContent: 'center',
-        // On iOS, the picker needs a fixed height to render correctly inside a modal.
         ...Platform.select({
             ios: {
                 height: 200,
-            },
-        }),
-    },
-    picker: {
-        width: '100%',
-        ...Platform.select({
-            android: {
-                height: 50,
-                color: theme.COLORS.textDark,
-            },
-            ios: {
-                // Height is set in container
             },
         }),
     },
@@ -445,16 +566,40 @@ const styles = StyleSheet.create({
         backgroundColor: theme.COLORS.backgroundCard,
         borderRadius: theme.BORDERRADIUS.lg,
         padding: theme.SPACING.lg,
+        minWidth: '80%',
+    },
+    
+    cancelButton: {
+        marginTop: theme.SPACING.md,
+        padding: theme.SPACING.sm,
+        alignItems: 'center',
+        backgroundColor: theme.COLORS.lightGray,
+        borderRadius: theme.BORDERRADIUS.sm,
+    },
+    cancelButtonText: {
+        color: theme.COLORS.textDark,
+        fontWeight: 'bold',
+    },
+    confirmButton: {
+        backgroundColor: theme.COLORS.primary,
+        padding: theme.SPACING.sm,
+        borderRadius: theme.BORDERRADIUS.sm,
+        alignItems: 'center',
+        marginTop: theme.SPACING.md,
     },
     selectedDesignContainer: {
         alignItems: 'center',
         marginVertical: theme.SPACING.md,
+        backgroundColor:'red',
+        width:'100%'
+
     },
     selectedDesignTitle: {
         fontSize: theme.FONT_SIZES.lg,
         fontWeight: 'bold',
         color: theme.COLORS.primary,
         marginBottom: theme.SPACING.sm,
+        backgroundColor: theme.COLORS.darkPrimary
     },
     designPreviewWrapper: {
         position: 'relative',
@@ -472,14 +617,40 @@ const styles = StyleSheet.create({
         backgroundColor: theme.COLORS.backgroundCard,
         borderRadius: 12,
     },
-    clearButton: {
-        backgroundColor: theme.COLORS.error,
-        padding: theme.SPACING.sm,
-        borderRadius: theme.BORDERRADIUS.sm,
+    reminderDateContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: theme.SPACING.md,
     },
-    clearButtonText: {
-        color: theme.COLORS.textLight,
+    removeReminderButton: {
+        marginLeft: theme.SPACING.md,
+    },
+    addReminderButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.sm,
+        backgroundColor: theme.COLORS.lightPrimary,
+        marginBottom: theme.SPACING.md,
+    },
+    addReminderButtonText: {
+        color: theme.COLORS.primary,
         fontWeight: 'bold',
+        marginLeft: theme.SPACING.sm,
+    },
+    clientSelector: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: theme.COLORS.backgroundCard,
+        padding: theme.SPACING.md,
+        borderRadius: theme.BORDERRADIUS.sm,
+        marginBottom: theme.SPACING.md,
+    },
+    clientSelectorText: {
+        fontSize: theme.FONT_SIZES.body,
+        color: theme.COLORS.textDark,
     },
 });
 

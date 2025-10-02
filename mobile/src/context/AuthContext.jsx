@@ -70,6 +70,26 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
+    const refreshUser = useCallback(async () => {
+        try {
+            const api = getApi();
+            const { data } = await api.get('/auth/me'); // Assuming /auth/me endpoint exists
+            const userInfoString = await AsyncStorage.getItem('userInfo');
+            let userInfo = {};
+            if (userInfoString) {
+                userInfo = JSON.parse(userInfoString);
+            }
+            const updatedUserInfo = { ...userInfo, ...data }; // Merge existing token/refreshToken with new user data
+            await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+            setUser(data);
+            currentUser = data; // Update global currentUser as well
+        } catch (error) {
+            console.error('Failed to refresh user data:', error);
+            // Optionally, log out user if refresh fails due to auth issues
+            // logout();
+        }
+    }, []);
+
     const logout = useCallback(async () => {
         authToken = null;
         currentUser = null;
@@ -81,7 +101,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
     
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

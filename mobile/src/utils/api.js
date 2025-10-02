@@ -6,8 +6,14 @@ import { addRequestToQueue } from './offlineManager';
 import { jwtDecode } from 'jwt-decode';
 
 let logoutCallback = null;
+let notificationHandler = null; // New variable for notification handler
+
 export const setApiLogoutCallback = (callback) => {
     logoutCallback = callback;
+};
+
+export const setNotificationHandler = (handler) => { // New export for setting notification handler
+    notificationHandler = handler;
 };
 
 let refreshTokenPromise = null;
@@ -18,7 +24,7 @@ let refreshTokenPromise = null;
 
 const getApi = () => {
     const api = axios.create({
-        baseURL: "https://eugotailorpro.onrender.com/api",
+        baseURL: "http://172.20.10.3:5000/api",
         timeout: 800000,
         headers: {
             'Content-Type': 'application/json',
@@ -90,6 +96,13 @@ const getApi = () => {
                     data: originalRequest.data,
                 });
                 return Promise.reject({ isOffline: true, message: 'Request queued due to offline status.' });
+            }
+
+            if (error.response && error.response.status === 403) {
+                if (notificationHandler) {
+                    notificationHandler(error.response.data.msg || 'Access Denied: You do not have the required permissions.', 'error');
+                }
+                return Promise.reject(error);
             }
 
             if (error.response && error.response.status === 401 && !originalRequest._retry) {

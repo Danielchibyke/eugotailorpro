@@ -23,7 +23,10 @@ const userSchema = mongoose.Schema(
         },
         expoPushToken: {
             type: String,
-            required: false, // Not all users will have a push token
+        },
+        receiveReminders: {
+            type: Boolean,
+            default: true,
         },
         isActive: {
             type: Boolean,
@@ -32,6 +35,14 @@ const userSchema = mongoose.Schema(
         },
         refreshTokens: {
             type: [String], // Array of strings to store multiple refresh tokens
+            default: [],
+        },
+        permissions: {
+            type: [String],
+            default: [],
+        },
+        customPermissions: {
+            type: [String],
             default: [],
         },
     },
@@ -65,7 +76,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 // Method to Generate Access Token (short-lived JWT)
 userSchema.methods.generateAccessToken = function () {
     return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-        expiresIn: '15m', // Access token expires in 15 minutes
+        expiresIn: '1d', // Access token expires in 1 day
     });
 };
 

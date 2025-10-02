@@ -16,15 +16,22 @@ import ClientCard from '../components/ClientCard';
 import { useNotification } from '../context/NotificationContext';
 import { getApi } from '../utils/api'; // Add API import
 import { theme } from '../styles/theme';
+import { getUserEffectivePermissions, PERMISSIONS } from '../config/permissions';
+import { useAuth } from '../context/AuthContext';
+import { useClients } from '../hooks/useClients'; // Import useClients hook
 
 const ClientsScreen = ({ navigation }) => {
-    const [clients, setClients] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { user, refreshUser } = useAuth();
+    const { clients, loading, error, refresh, dataOrigin } = useClients(); // Use useClients hook
     const [searchQuery, setSearchQuery] = useState('');
     const { showNotification } = useNotification();
+    const permissions = useMemo(() => getUserEffectivePermissions(user), [user]);
+    const canViewClients = permissions.includes(PERMISSIONS.CLIENTS_VIEW);
+    const canCreateClients = permissions.includes(PERMISSIONS.CLIENTS_CREATE);
 
     const fetchClients = async () => {
         setLoading(true);
+        
         try {
             const { data } = await getApi().get('/clients');
             setClients(data);
@@ -37,10 +44,18 @@ const ClientsScreen = ({ navigation }) => {
     };
 
     useEffect(() => {
-        fetchClients();
-        const unsubscribe = navigation.addListener('focus', fetchClients);
+        const unsubscribe = navigation.addListener('focus', () => {
+            refreshUser();
+            refresh(); // Refresh data on focus
+        });
         return unsubscribe;
-    }, [navigation]);
+    }, [navigation, refreshUser, refresh]);
+
+    useEffect(() => {
+        if (canViewClients) {
+            refresh(); // Call refresh from the hook
+        }
+    }, [canViewClients, refresh]);
 
     const handleDeleteClient = async (clientId) => {
         Alert.alert(
@@ -51,12 +66,11 @@ const ClientsScreen = ({ navigation }) => {
                 {
                     text: 'Delete',
                     onPress: async () => {
-                        try {
-                            await getApi().delete(`/clients/${clientId}`);
-                            setClients(prev => prev.filter(client => client._id !== clientId));
+                        const result = await deleteClient(clientId);
+                        if (result.success) {
                             showNotification('Client deleted successfully!', 'success');
-                        } catch (err) {
-                            showNotification(err.response?.data?.msg || 'Failed to delete client.', 'error');
+                        } else {
+                            showNotification(result.error, 'error');
                         }
                     },
                     style: 'destructive',
@@ -80,6 +94,17 @@ const ClientsScreen = ({ navigation }) => {
         <></> // renderHeader will now be empty
     );
 
+    if (!canViewClients) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text style={styles.emptyStateText}>Access Denied</Text>
+                <Text style={styles.emptyStateSubText}>
+                    You do not have permission to view clients.
+                </Text>
+            </View>
+        );
+    }
+
     if (loading && clients.length === 0) {
         return (
             <View style={styles.loadingContainer}>
@@ -92,23 +117,32 @@ const ClientsScreen = ({ navigation }) => {
         <BackgroundContainer>
             <View style={styles.fixedHeader}>
                 <View style={styles.headerContainer}>
-
-                <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={20} color={theme.COLORS.textMedium} style={styles.searchIcon} />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search by name..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        placeholderTextColor={theme.COLORS.textMedium}
-                    />
-                </View>
-                 
+                    <View style={styles.searchContainer}>
+                        <Ionicons name="search" size={20} color={theme.COLORS.textMedium} style={styles.searchIcon} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search by name..."
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            placeholderTextColor={theme.COLORS.textMedium}
+                        />
+                    </View>
                     <View style={styles.balanceContainer}>
                         <Text style={styles.balanceLabel}>Total Clients</Text>
                         <Text style={styles.balanceValue}>{clients.length}</Text>
                     </View>
-               
+                    {dataOrigin && (
+                        <View style={styles.dataOriginContainer}>
+                            <Ionicons
+                                name={dataOrigin === 'cache' ? 'cloud-offline-outline' : 'cloud-done-outline'}
+                                size={16}
+                                color={theme.COLORS.textLight}
+                            />
+                            <Text style={styles.dataOriginText}>
+                                {dataOrigin === 'cache' ? 'Offline Data' : 'Online Data'}
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </View>
             <FlatList
@@ -135,9 +169,11 @@ const ClientsScreen = ({ navigation }) => {
                 refreshing={loading}
                 onRefresh={fetchClients}
             />
+            {canCreateClients && (
             <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddClient')}>
                 <Ionicons name="add" size={30} color={theme.COLORS.textLight} />
             </TouchableOpacity>
+            )}
         </BackgroundContainer>
     );
 };

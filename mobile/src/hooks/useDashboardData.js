@@ -43,11 +43,10 @@ export const useDashboardData = () => {
                     totalOutstanding: data.totalOutstanding || 0,
                 });
                 await cacheData(CACHE_KEY_BOOKINGS, data.recentBookings || []);
-                showNotification('Dashboard data synced successfully!', 'success');
+                showNotification('Online');
             } catch (err) {
                 console.error('Failed to fetch dashboard data from API:', err);
                 setError(err.response?.data?.msg || 'Failed to fetch dashboard data.');
-                showNotification(err.response?.data?.msg || 'Failed to fetch dashboard data.', 'error');
                 
                 // Try to load from cache on API failure
                 const cachedStats = await getCachedData(CACHE_KEY_STATS);
@@ -55,7 +54,7 @@ export const useDashboardData = () => {
                 if (cachedStats && cachedBookings) {
                     setStats(cachedStats);
                     setRecentBookings(cachedBookings);
-                    showNotification('Displaying cached dashboard data due to network error.', 'info');
+                    showNotification('Offline');
                 } else {
                     showNotification('No cached data available for dashboard.', 'info');
                 }
